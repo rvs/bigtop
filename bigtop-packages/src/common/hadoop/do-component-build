@@ -16,14 +16,28 @@
 
 set -ex
 
-ant  \
-  -Djava5.home=$JAVA5_HOME \
-  -Dforrest.home=$FORREST_HOME \
-  -Dversion=${HADOOP_VERSION} \
-  -Dcompile.native=true \
-  -Dhadoop.conf.dir=/etc/hadoop/conf \
-  -Dlibhdfs=1 -Dcompile.c++=true -Djdiff.build.dir=build/docs/jdiff-cloudera \
-  api-report bin-package compile-contrib package \
-  "$@"
+STITCH_FILES="CHANGES.txt LICENSE.txt NOTICE.txt README.txt"
 
-	
+mkdir build
+rm -f $STITCH_FILES
+
+for project in common hdfs mapreduce ; do 
+  cd $project
+  ant  \
+    -Djava5.home=$JAVA5_HOME \
+    -Dforrest.home=$FORREST_HOME \
+    -Dversion=${HADOOP_VERSION} \
+    -Dcompile.native=true \
+    -Dhadoop.conf.dir=/etc/hadoop/conf \
+    -Dlibhdfs=1 -Dfusedfs=true -Dcompile.c++=true -Djdiff.build.dir=build/docs/jdiff-cloudera \
+   api-report bin-package $BUILD_CONTRIB package \
+    "$@"
+  (cd build/hadoop-*-0.22 ; tar cf - * ) | (cd ../build ; tar xf - )
+
+  for file in $STITCH_FILES ; do
+    [ -f $file ] && cat $file >> ../$file
+  done
+  
+  BUILD_CONTRIB="compile-contrib"
+  cd ..
+done
