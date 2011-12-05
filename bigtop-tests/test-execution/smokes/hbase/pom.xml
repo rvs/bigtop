@@ -88,7 +88,17 @@
         <artifactId>maven-failsafe-plugin</artifactId>
         <version>2.7.1</version>
         <configuration>
+          <classpathDependencyExcludes>
+            <classpathDependencyExcludes>org.apache.hadoop:hadoop-mapred</classpathDependencyExcludes>
+            <classpathDependencyExcludes>org.apache.hadoop:hadoop-hdfs</classpathDependencyExcludes>
+            <classpathDependencyExcludes>org.apache.hbase:hbase</classpathDependencyExcludes>
+            <classpathDependencyExcludes>org.apache.hbase:hbase</classpathDependencyExcludes>
+          </classpathDependencyExcludes>
           <additionalClasspathElements>
+            <additionalClasspathElement>${HBASE_HOME}/hbase-${hbase.version}.jar</additionalClasspathElement>
+            <additionalClasspathElement>${HBASE_HOME}/hbase-${hbase.version}-tests.jar</additionalClasspathElement>
+            <additionalClasspathElement>${HADOOP_HOME}/hadoop-mapred.jar</additionalClasspathElement>
+            <additionalClasspathElement>${HADOOP_HOME}/hadoop-hdfs.jar</additionalClasspathElement>
             <additionalClasspathElement>${HBASE_HOME}/conf</additionalClasspathElement>
             <additionalClasspathElement>${ZOOKEEPER_HOME}/conf</additionalClasspathElement>
             <additionalClasspathElement>${HADOOP_HOME}/conf</additionalClasspathElement>
