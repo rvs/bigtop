@@ -16,7 +16,7 @@
 stage {"pre": before => Stage["main"]}
 
 yumrepo { "Bigtop":
-    baseurl => "http://bigtop01.cloudera.org:8080/job/Bigtop-trunk-matrix/label=centos5/lastSuccessfulBuild/artifact/output/",
+    baseurl => "http://bigtop01.cloudera.org:8080/job/Bigtop-hadoop22-centos5/lastSuccessfulBuild/artifact/output/",
     descr => "Bigtop packages",
     enabled => 1,
     gpgcheck => 0,
