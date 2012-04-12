@@ -55,6 +55,7 @@ import org.apache.bigtop.itest.shell.Shell;
   -Dmeta.timeout.ms=<milliseconds to wait while trying to find .META.>
   -Dwait.after.move.ms=<milliseconds to wait after moving -ROOT- or .META.>
 */
+
 public class TestMoveRootMetaRegions {
   private static final String HBASE_HOME = System.getenv("HBASE_HOME");
   static {
