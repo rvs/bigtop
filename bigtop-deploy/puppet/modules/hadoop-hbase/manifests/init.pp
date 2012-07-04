@@ -38,8 +38,14 @@ class hadoop-hbase {
       content => template("hadoop-hbase/hbase-site.xml"),
       require => Package["hbase"],
     }
+
     file { "/etc/hbase/conf/hbase-env.sh":
       content => template("hadoop-hbase/hbase-env.sh"),
+      require => Package["hbase"],
+    }
+
+    file { "/etc/hbase/conf/hadoop-metrics.properties":
+      content => template("hadoop-hbase/hadoop-metrics.properties"),
       require => Package["hbase"],
     }
   }
@@ -58,7 +64,7 @@ class hadoop-hbase {
     service { "hbase-regionserver":
       ensure => running,
       require => Package["hbase-regionserver"],
-      subscribe => File["/etc/hbase/conf/hbase-site.xml", "/etc/hbase/conf/hbase-env.sh"],
+      subscribe => File["/etc/hbase/conf/hbase-site.xml", "/etc/hbase/conf/hbase-env.sh", "/etc/hbase/conf/hadoop-metrics.properties"],
       hasrestart => true,
       hasstatus => true,
     } 
@@ -75,7 +81,7 @@ class hadoop-hbase {
     service { "hbase-master":
       ensure => running,
       require => Package["hbase-master"],
-      subscribe => File["/etc/hbase/conf/hbase-site.xml", "/etc/hbase/conf/hbase-env.sh"],
+      subscribe => File["/etc/hbase/conf/hbase-site.xml", "/etc/hbase/conf/hbase-env.sh", "/etc/hbase/conf/hadoop-metrics.properties"],
       hasrestart => true,
       hasstatus => true,
     } 

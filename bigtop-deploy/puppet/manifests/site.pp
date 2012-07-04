@@ -42,12 +42,29 @@ node default {
   case $::fqdn {
     $hadoop_head_node: {
       include hadoop_head_node
+      include ganglia::gmetad
+
+      ganglia::gmond {
+         "${hostname} gmond instance":
+         cluster => "Bigtop",
+         # Use whatever multicast address your gmetad is listening on
+         mcast_address => "239.2.11.73"
+      }
+
     }
     $standby_head_node: {
       include standby_head_node
     }
     default: {
       include hadoop_worker_node
+
+      ganglia::gmond {
+         "${hostname} gmond instance":
+         cluster => "Bigtop",
+         # Use whatever multicast address your gmetad is listening on
+         mcast_address => "239.2.11.73"
+      }
+
     }
   }
 

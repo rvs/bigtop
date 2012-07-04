@@ -45,6 +45,12 @@ class hadoop {
         require => [Package["hadoop"]],
     }
 
+    file {
+      "/etc/hadoop/conf/hadoop-metrics2.properties":
+        content => template('hadoop/hadoop-metrics2.properties'),
+        require => [Package["hadoop"]],
+    }
+
     package { "hadoop":
       ensure => latest,
       require => Package["jdk"],
@@ -150,7 +156,7 @@ class hadoop {
     service { "hadoop-hdfs-datanode":
       ensure => running,
       hasstatus => true,
-      subscribe => [Package["hadoop-hdfs-datanode"], File["/etc/hadoop/conf/core-site.xml"], File["/etc/hadoop/conf/hdfs-site.xml"], File["/etc/hadoop/conf/hadoop-env.sh"]],
+      subscribe => [Package["hadoop-hdfs-datanode"], File["/etc/hadoop/conf/core-site.xml"], File["/etc/hadoop/conf/hdfs-site.xml"], File["/etc/hadoop/conf/hadoop-env.sh"], File["/etc/hadoop/conf/hadoop-metrics2.properties"]],
       require => [ Package["hadoop-hdfs-datanode"], File[$dirs] ],
     }
     Kerberos::Host_keytab <| title == "hdfs" |> -> Service["hadoop-hdfs-datanode"]
@@ -312,7 +318,7 @@ class hadoop {
     service { "hadoop-hdfs-namenode":
       ensure => running,
       hasstatus => true,
-      subscribe => [Package["hadoop-hdfs-namenode"], File["/etc/hadoop/conf/core-site.xml"], File["/etc/hadoop/conf/hdfs-site.xml"], File["/etc/hadoop/conf/hadoop-env.sh"]],
+      subscribe => [Package["hadoop-hdfs-namenode"], File["/etc/hadoop/conf/core-site.xml"], File["/etc/hadoop/conf/hdfs-site.xml"], File["/etc/hadoop/conf/hadoop-env.sh"], File["/etc/hadoop/conf/hadoop-metrics2.properties"]],
       require => [Package["hadoop-hdfs-namenode"]],
     } 
     Exec <| tag == "namenode-format" |>         -> Service["hadoop-hdfs-namenode"]
@@ -414,7 +420,7 @@ class hadoop {
     service { "hadoop-hdfs-secondarynamenode":
       ensure => running,
       hasstatus => true,
-      subscribe => [Package["hadoop-hdfs-secondarynamenode"], File["/etc/hadoop/conf/core-site.xml"], File["/etc/hadoop/conf/hdfs-site.xml"], File["/etc/hadoop/conf/hadoop-env.sh"]],
+      subscribe => [Package["hadoop-hdfs-secondarynamenode"], File["/etc/hadoop/conf/core-site.xml"], File["/etc/hadoop/conf/hdfs-site.xml"], File["/etc/hadoop/conf/hadoop-env.sh"], File["/etc/hadoop/conf/hadoop-metrics2.properties"]],
       require => [Package["hadoop-hdfs-secondarynamenode"]],
     }
     Kerberos::Host_keytab <| title == "hdfs" |> -> Service["hadoop-hdfs-secondarynamenode"]
@@ -439,7 +445,8 @@ class hadoop {
       ensure => running,
       hasstatus => true,
       subscribe => [Package["hadoop-yarn-resourcemanager"], File["/etc/hadoop/conf/hadoop-env.sh"], 
-                    File["/etc/hadoop/conf/yarn-site.xml"], File["/etc/hadoop/conf/core-site.xml"]],
+                    File["/etc/hadoop/conf/yarn-site.xml"], File["/etc/hadoop/conf/core-site.xml"],
+                    File["/etc/hadoop/conf/hadoop-metrics2.properties"]],
       require => [ Package["hadoop-yarn-resourcemanager"] ],
     }
     Kerberos::Host_keytab <| tag == "mapreduce" |> -> Service["hadoop-yarn-resourcemanager"]
@@ -507,7 +514,8 @@ class hadoop {
       ensure => running,
       hasstatus => true,
       subscribe => [Package["hadoop-yarn-nodemanager"], File["/etc/hadoop/conf/hadoop-env.sh"], 
-                    File["/etc/hadoop/conf/yarn-site.xml"], File["/etc/hadoop/conf/core-site.xml"]],
+                    File["/etc/hadoop/conf/yarn-site.xml"], File["/etc/hadoop/conf/core-site.xml"],
+                    File["/etc/hadoop/conf/hadoop-metrics2.properties"]],
       require => [ Package["hadoop-yarn-nodemanager"], File[$dirs] ],
     }
     Kerberos::Host_keytab <| tag == "mapreduce" |> -> Service["hadoop-yarn-nodemanager"]
