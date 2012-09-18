@@ -197,6 +197,21 @@ DATAFU_SITE=https://github.com/downloads/linkedin/datafu
 DATAFU_ARCHIVE=$(DATAFU_SITE)
 $(eval $(call PACKAGE,datafu,DATAFU))
 
+# Crunch
+CRUNCH_NAME=crunch
+CRUNCH_RELNOTES_NAME=Java library for MapReduce pipelines
+CRUNCH_PKG_NAME=crunch
+CRUNCH_BASE_VERSION=0.3.0-incubating
+CRUNCH_PKG_VERSION=0.3.0
+CRUNCH_RELEASE_VERSION=1
+CRUNCH_TARBALL_DST=apache-crunch-$(CRUNCH_BASE_VERSION).tar.gz
+#CRUNCH_TARBALL_SRC=$(CRUNCH_TARBALL_DST)
+#CRUNCH_SITE=https://github.com/downloads/linkedin/datafu
+CRUNCH_TARBALL_SRC=apache-crunch-0.3.0-incubating
+CRUNCH_SITE=https://github.com/rvs/crunch/tarball
+CRUNCH_ARCHIVE=$(CRUNCH_SITE)
+$(eval $(call PACKAGE,crunch,CRUNCH))
+
 # Bigtop-utils
 BIGTOP_UTILS_NAME=bigtop-utils
 BIGTOP_UTILS__RELNOTES_NAME=Bigtop-utils
