@@ -163,6 +163,7 @@ Source20: hdfs.default
 Source21: yarn.default
 Source22: hadoop-layout.sh
 Source23: hadoop-hdfs-zkfc.svc
+Patch1: HADOOP-8887.008.patch
 Buildroot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id} -u -n)
 BuildRequires: python >= 2.4, git, fuse-devel, fuse, cmake
 Requires: coreutils, /usr/sbin/useradd, /usr/sbin/usermod, /sbin/chkconfig, /sbin/service, bigtop-utils, zookeeper >= 3.4.0
@@ -415,7 +416,8 @@ These projects (enumerated below) allow HDFS to be mounted (on most flavors of U
 
 
 %prep
-%setup -n %{name}-%{hadoop_base_version}-src 
+%setup -n apache-hadoop-common-ce25c35
+%patch1 -p0
 
 
 %build

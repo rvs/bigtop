@@ -1,0 +1,1496 @@
+diff --git dev-support/cmake-maven-ng-plugin/dev-support/findbugsExcludeFile.xml dev-support/cmake-maven-ng-plugin/dev-support/findbugsExcludeFile.xml
+new file mode 100644
+index 0000000..c8ca930
+--- /dev/null
++++ dev-support/cmake-maven-ng-plugin/dev-support/findbugsExcludeFile.xml
+@@ -0,0 +1,38 @@
++<!--
++   Licensed to the Apache Software Foundation (ASF) under one or more
++   contributor license agreements.  See the NOTICE file distributed with
++   this work for additional information regarding copyright ownership.
++   The ASF licenses this file to You under the Apache License, Version 2.0
++   (the "License"); you may not use this file except in compliance with
++   the License.  You may obtain a copy of the License at
++
++       http://www.apache.org/licenses/LICENSE-2.0
++
++   Unless required by applicable law or agreed to in writing, software
++   distributed under the License is distributed on an "AS IS" BASIS,
++   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++   See the License for the specific language governing permissions and
++   limitations under the License.
++-->
++<FindBugsFilter>
++     <!-- 
++       FindBugs complains a lot about "unwritten fields" which are actually 
++       written by Maven.  
++     --> 
++     <Match>
++       <Class name="org.apache.hadoop.cmake.maven.ng.CompileMojo" />
++       <Bug pattern="NP_UNWRITTEN_FIELD" />
++     </Match>
++     <Match>
++       <Class name="org.apache.hadoop.cmake.maven.ng.CompileMojo" />
++       <Bug pattern="UWF_UNWRITTEN_FIELD" />
++     </Match>
++     <Match>
++       <Class name="org.apache.hadoop.cmake.maven.ng.TestMojo" />
++       <Bug pattern="NP_UNWRITTEN_FIELD" />
++     </Match>
++     <Match>
++       <Class name="org.apache.hadoop.cmake.maven.ng.TestMojo" />
++       <Bug pattern="UWF_UNWRITTEN_FIELD" />
++     </Match>
++ </FindBugsFilter>
+diff --git dev-support/cmake-maven-ng-plugin/pom.xml dev-support/cmake-maven-ng-plugin/pom.xml
+new file mode 100644
+index 0000000..0fb820e
+--- /dev/null
++++ dev-support/cmake-maven-ng-plugin/pom.xml
+@@ -0,0 +1,82 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!--
++  Licensed under the Apache License, Version 2.0 (the "License");
++  you may not use this file except in compliance with the License.
++  You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++  Unless required by applicable law or agreed to in writing, software
++  distributed under the License is distributed on an "AS IS" BASIS,
++  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++  See the License for the specific language governing permissions and
++  limitations under the License. See accompanying LICENSE file.
++-->
++<project xmlns="http://maven.apache.org/POM/4.0.0" 
++  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
++                      http://maven.apache.org/maven-v4_0_0.xsd">
++  <modelVersion>4.0.0</modelVersion>
++  <groupId>org.apache.hadoop.cmake.maven.ng</groupId>
++  <artifactId>cmake-ng</artifactId>
++  <packaging>maven-plugin</packaging>
++  <version>3.0.0-SNAPSHOT</version>
++  <name>cmake-ng Maven Mojo</name>
++  <url>http://maven.apache.org</url>
++  <properties>
++    <failIfNoTests>false</failIfNoTests>
++    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
++  </properties>
++  <dependencies>
++    <dependency>
++      <groupId>org.apache.maven</groupId>
++      <artifactId>maven-plugin-api</artifactId>
++      <version>2.0</version>
++    </dependency>
++    <dependency>
++      <groupId>org.apache.maven</groupId>
++      <artifactId>maven-core</artifactId>
++      <version>2.0</version>
++    </dependency>
++    <dependency>
++      <groupId>junit</groupId>
++      <artifactId>junit</artifactId>
++      <version>3.8.1</version>
++      <scope>test</scope>
++    </dependency>
++  </dependencies>
++
++  <build>
++    <plugins>
++      <!-- We need to compile this plugin during the pre-site phase so that the
++           jar is available for things that happen in the site phase, such as
++           the javadoc building plugin.
++        -->
++      <plugin>
++        <groupId>org.apache.maven.plugins</groupId>
++        <artifactId>maven-compiler-plugin</artifactId>
++        <executions>
++          <execution>
++            <phase>pre-site</phase>
++            <id>pre-site</id>
++            <goals>
++              <goal>compile</goal>
++            </goals>
++          </execution>
++        </executions>
++      </plugin>
++      <!-- The findbugs bugs which we are suppressing.  These are all spurious. -->
++      <plugin>
++        <groupId>org.codehaus.mojo</groupId>
++        <artifactId>findbugs-maven-plugin</artifactId>
++        <version>2.3.2</version>
++        <configuration>
++          <findbugsXmlOutput>true</findbugsXmlOutput>
++          <xmlOutput>true</xmlOutput>
++          <excludeFilterFile>${basedir}/dev-support/findbugsExcludeFile.xml</excludeFilterFile>
++          <effort>Max</effort>
++        </configuration>
++      </plugin>
++    </plugins>
++  </build>
++</project>
+diff --git dev-support/cmake-maven-ng-plugin/src/main/java/org/apache/hadoop/cmake/maven/ng/CompileMojo.java dev-support/cmake-maven-ng-plugin/src/main/java/org/apache/hadoop/cmake/maven/ng/CompileMojo.java
+new file mode 100644
+index 0000000..1334e0f
+--- /dev/null
++++ dev-support/cmake-maven-ng-plugin/src/main/java/org/apache/hadoop/cmake/maven/ng/CompileMojo.java
+@@ -0,0 +1,216 @@
++package org.apache.hadoop.cmake.maven.ng;
++
++/*
++ * Copyright 2012 The Apache Software Foundation.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++import org.apache.maven.plugin.AbstractMojo;
++import org.apache.maven.plugin.MojoExecutionException;
++import org.apache.hadoop.cmake.maven.ng.Utils.OutputBufferThread;
++
++import java.io.BufferedReader;
++import java.io.File;
++import java.io.IOException;
++import java.io.InputStream;
++import java.io.InputStreamReader;
++import java.util.LinkedList;
++import java.util.List;
++import java.util.Map;
++
++
++/**
++ * Goal which builds the native sources
++ *
++ * @goal compile
++ * @phase compile
++ */
++public class CompileMojo extends AbstractMojo {
++  /**
++   * Location of the build products.
++   *
++   * @parameter expression="${output}" 
++   *            default-value="${project.build.directory}/native"
++   */
++  private File output;
++
++  /**
++   * Location of the source files.
++   * This should be where the sources are checked in.
++   *
++   * @parameter expression="${source}"
++   *            default-value="${basedir}/src/main/native"
++   * @required
++   */
++  private File source;
++
++  /**
++   * CMake build target.
++   *
++   * For example, Debug or Production.
++   *
++   * @parameter expression="${target}"
++   */
++  private String target;
++
++  /**
++   * Environment variables to pass to CMake.
++   *
++   * Note that it is usually better to use a CMake variable than an environment
++   * variable.  To quote the CMake FAQ:
++   *
++   * "One should avoid using environment variables for controlling the flow of
++   * CMake code (such as in IF commands). The build system generated by CMake
++   * may re-run CMake automatically when CMakeLists.txt files change. The
++   * environment in which this is executed is controlled by the build system and
++   * may not match that in which CMake was originally run. If you want to
++   * control build settings on the CMake command line, you need to use cache
++   * variables set with the -D option. The settings will be saved in
++   * CMakeCache.txt so that they don't have to be repeated every time CMake is
++   * run on the same build tree."
++   *
++   * @parameter expression="${env}"
++   */
++  private Map<String, String> env;
++
++  /**
++   * CMake cached variables to set.
++   *
++   * @parameter expression="${vars}"
++   */
++  private Map<String, String> vars;
++
++  public void execute() throws MojoExecutionException {
++    Utils.validatePlatform();
++    runCMake();
++    runMake();
++  }
++
++  public void runCMake() throws MojoExecutionException {
++    Utils.validatePlatform();
++    Utils.validateParams(output, source);
++
++    if (output.mkdirs()) {
++      System.out.println("mkdirs '" + output + "'");
++    }
++    List<String> cmd = new LinkedList<String>();
++    cmd.add("cmake");
++    cmd.add(source.getAbsolutePath());
++    for (Map.Entry<String, String> entry : vars.entrySet()) {
++      if ((entry.getValue() != null) && (!entry.getValue().equals(""))) {
++        cmd.add("-D" + entry.getKey() + "=" + entry.getValue());
++      }
++    }
++    cmd.add("-G");
++    cmd.add("Unix Makefiles");
++    String prefix = "";
++    StringBuilder bld = new StringBuilder();
++    for (String c : cmd) {
++      bld.append(prefix);
++      bld.append("'").append(c).append("'");
++      prefix = " ";
++    }
++    System.out.println("Running " + bld.toString());
++    ProcessBuilder pb = new ProcessBuilder(cmd);
++    pb.directory(output);
++    pb.redirectErrorStream(true);
++    Utils.addEnvironment(pb, env);
++    Process proc = null;
++    OutputBufferThread outThread = null;
++    int retCode = -1;
++    try {
++      proc = pb.start();
++      outThread = new OutputBufferThread(proc.getInputStream());
++      outThread.start();
++
++      retCode = proc.waitFor();
++      if (retCode != 0) {
++        throw new MojoExecutionException("CMake failed with error code " +
++            retCode);
++      }
++    } catch (IOException e) {
++      throw new MojoExecutionException("Error executing CMake", e);
++    } catch (InterruptedException e) {
++      throw new MojoExecutionException("Interrupted while waiting for " +
++          "CMake process", e);
++    } finally {
++      if (proc != null) {
++        proc.destroy();
++      }
++      if (outThread != null) {
++        try {
++          outThread.interrupt();
++          outThread.join();
++        } catch (InterruptedException e) {
++          e.printStackTrace();
++        }
++        if (retCode != 0) {
++          outThread.printBufs();
++        }
++      }
++    }
++  }
++
++  public void runMake() throws MojoExecutionException {
++    List<String> cmd = new LinkedList<String>();
++    cmd.add("make");
++    cmd.add("VERBOSE=1");
++    if (target != null) {
++      cmd.add(target);
++    }
++    ProcessBuilder pb = new ProcessBuilder(cmd);
++    pb.directory(output);
++    Process proc = null;
++    int retCode = -1;
++    OutputBufferThread stdoutThread = null, stderrThread = null;
++    try {
++      proc = pb.start();
++      stdoutThread = new OutputBufferThread(proc.getInputStream());
++      stderrThread = new OutputBufferThread(proc.getErrorStream());
++      stdoutThread.start();
++      stderrThread.start();
++      retCode = proc.waitFor();
++      if (retCode != 0) {
++        throw new MojoExecutionException("make failed with error code " +
++            retCode);
++      }
++    } catch (InterruptedException e) {
++      throw new MojoExecutionException("Interrupted during Process#waitFor", e);
++    } catch (IOException e) {
++      throw new MojoExecutionException("Error executing make", e);
++    } finally {
++      if (stdoutThread != null) {
++        try {
++          stdoutThread.join();
++        } catch (InterruptedException e) {
++          e.printStackTrace();
++        }
++        if (retCode != 0) {
++          stdoutThread.printBufs();
++        }
++      }
++      if (stderrThread != null) {
++        try {
++          stderrThread.join();
++        } catch (InterruptedException e) {
++          e.printStackTrace();
++        }
++        // We always print stderr, since it contains the compiler warning
++        // messages.  These are interesting even if compilation succeeded.
++        stderrThread.printBufs();
++      }
++      if (proc != null) proc.destroy();
++    }
++  }
++}
+diff --git dev-support/cmake-maven-ng-plugin/src/main/java/org/apache/hadoop/cmake/maven/ng/TestMojo.java dev-support/cmake-maven-ng-plugin/src/main/java/org/apache/hadoop/cmake/maven/ng/TestMojo.java
+new file mode 100644
+index 0000000..0e87a53
+--- /dev/null
++++ dev-support/cmake-maven-ng-plugin/src/main/java/org/apache/hadoop/cmake/maven/ng/TestMojo.java
+@@ -0,0 +1,409 @@
++package org.apache.hadoop.cmake.maven.ng;
++
++/*
++ * Copyright 2012 The Apache Software Foundation.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++import org.apache.maven.execution.MavenSession;
++import org.apache.maven.plugin.AbstractMojo;
++import org.apache.maven.plugin.MojoExecutionException;
++import org.apache.hadoop.cmake.maven.ng.Utils.OutputToFileThread;
++
++import java.io.BufferedWriter;
++import java.io.File;
++import java.io.FileOutputStream;
++import java.io.IOException;
++import java.io.OutputStreamWriter;
++import java.util.LinkedList;
++import java.util.List;
++import java.util.HashMap;
++import java.util.Map;
++
++/**
++ * Goal which runs a native unit test.
++ *
++ * @goal test
++ * @phase test
++ */
++public class TestMojo extends AbstractMojo {
++  /**
++   * Location of the binary to run.
++   *
++   * @parameter expression="${binary}"
++   * @required
++   */
++  private File binary;
++
++  /**
++   * Name of this test.
++   *
++   * Defaults to the basename of the binary.  So if your binary is /foo/bar/baz,
++   * this will default to 'baz.'
++   *
++   * @parameter expression="${testName}"
++   */
++  private String testName;
++
++  /**
++   * Environment variables to pass to the binary.
++   *
++   * @parameter expression="${env}"
++   */
++  private Map<String, String> env;
++
++  /**
++   * Arguments to pass to the binary.
++   *
++   * @parameter expression="${args}"
++   */
++  private List<String> args;
++
++  /**
++   * Number of seconds to wait before declaring the test failed.
++   *
++   * @parameter expression="${timeout}" default-value=600
++   */
++  private int timeout;
++
++  /**
++   * Path to results directory.
++   *
++   * @parameter expression="${results}" default-value="native-results"
++   */
++  private File results;
++
++  /**
++   * A list of preconditions which must be true for this test to be run.
++   *
++   * @parameter expression="${preconditions}"
++   */
++  private Map<String, String> preconditions = new HashMap<String, String>();
++
++  /**
++   * If true, pass over the test without an error if the binary is missing.
++   *
++   * @parameter expression="${skipIfMissing}" default-value="false"
++   */
++  private boolean skipIfMissing;
++  
++  /**
++   * What result to expect from the test
++   *
++   * @parameter expression="${expectedResult}" default-value="success"
++   *            Can be either "success", "failure", or "any".
++   */
++  private String expectedResult;
++  
++  /**
++   * The Maven Session Object
++   *
++   * @parameter expression="${session}"
++   * @required
++   * @readonly
++   */
++  private MavenSession session;
++   
++  /**
++   * The test thread waits for the process to terminate.
++   *
++   * Since Process#waitFor doesn't take a timeout argument, we simulate one by
++   * interrupting this thread after a certain amount of time has elapsed.
++   */
++  private static class TestThread extends Thread {
++    private Process proc;
++    private int retCode = -1;
++
++    public TestThread(Process proc) {
++      this.proc = proc;
++    }
++
++    public void run() {
++      try {
++        retCode = proc.waitFor();
++      } catch (InterruptedException e) {
++        retCode = -1;
++      }
++    }
++
++    public int retCode() {
++      return retCode;
++    }
++  }
++
++  /**
++   * Write to the status file.
++   *
++   * The status file will contain a string describing the exit status of the
++   * test.  It will be SUCCESS if the test returned success (return code 0), a
++   * numerical code if it returned a non-zero status, or IN_PROGRESS or
++   * TIMED_OUT.
++   */
++  private void writeStatusFile(String status) throws IOException {
++    FileOutputStream fos = new FileOutputStream(new File(results,
++                testName + ".native-status"));
++    BufferedWriter out = null;
++    try {
++      out = new BufferedWriter(new OutputStreamWriter(fos, "UTF8"));
++      out.write(status + "\n");
++    } finally {
++      if (out != null) {
++        out.close();
++      } else {
++        fos.close();
++      }
++    }
++  }
++
++  private static boolean isTruthy(String str) {
++    if (str == null)
++      return false;
++    if (str.equalsIgnoreCase(""))
++      return false;
++    if (str.equalsIgnoreCase("false"))
++      return false;
++    if (str.equalsIgnoreCase("no"))
++      return false;
++    if (str.equalsIgnoreCase("off"))
++      return false;
++    if (str.equalsIgnoreCase("disable"))
++      return false;
++    return true;
++  }
++
++  
++  final static private String VALID_PRECONDITION_TYPES_STR =
++      "Valid precondition types are \"and\", \"andNot\"";
++  
++  /**
++   * Validate the parameters that the user has passed.
++   * @throws MojoExecutionException 
++   */
++  private void validateParameters() throws MojoExecutionException {
++    if (!(expectedResult.equals("success") ||
++        expectedResult.equals("failure") ||
++        expectedResult.equals("any"))) {
++      throw new MojoExecutionException("expectedResult must be either " +
++          "success, failure, or any");
++    }
++  }
++  
++  private boolean shouldRunTest() throws MojoExecutionException {
++    // Were we told to skip all tests?
++    String skipTests = session.
++        getExecutionProperties().getProperty("skipTests");
++    if (isTruthy(skipTests)) {
++      System.out.println("skipTests is in effect for test " + testName);
++      return false;
++    }
++    // Does the binary exist?  If not, we shouldn't try to run it.
++    if (!binary.exists()) {
++      if (skipIfMissing) {
++        System.out.println("Skipping missing test " + testName);
++        return false;
++      } else {
++        throw new MojoExecutionException("Test " + binary +
++            " was not built!  (File does not exist.)");
++      }
++    }
++    // If there is an explicit list of tests to run, it should include this 
++    // test.
++    String testProp = session.
++        getExecutionProperties().getProperty("test");
++    if (testProp != null) {
++      String testPropArr[] = testProp.split(",");
++      boolean found = false;
++      for (String test : testPropArr) {
++        if (test.equals(testName)) {
++          found = true;
++          break;
++        }
++      }
++      if (!found) {
++        System.out.println("did not find test '" + testName + "' in "
++             + "list " + testProp);
++        return false;
++      }
++    }
++    // Are all the preconditions satistfied?
++    if (preconditions != null) {
++      int idx = 1;
++      for (Map.Entry<String, String> entry : preconditions.entrySet()) {
++        String key = entry.getKey();
++        String val = entry.getValue();
++        if (key == null) {
++          throw new MojoExecutionException("NULL is not a valid " +
++          		"precondition type.  " + VALID_PRECONDITION_TYPES_STR);
++        } if (key.equals("and")) {
++          if (!isTruthy(val)) {
++            System.out.println("Skipping test " + testName +
++                " because precondition number " + idx + " was not met.");
++            return false;
++          }
++        } else if (key.equals("andNot")) {
++          if (isTruthy(val)) {
++            System.out.println("Skipping test " + testName +
++                " because negative precondition number " + idx +
++                " was met.");
++            return false;
++          }
++        } else {
++          throw new MojoExecutionException(key + " is not a valid " +
++          		"precondition type.  " + VALID_PRECONDITION_TYPES_STR);
++        }
++        idx++;
++      }
++    }
++    // OK, we should run this.
++    return true;
++  }
++  
++  public void execute() throws MojoExecutionException {
++    if (testName == null) {
++      testName = binary.getName();
++    }
++    Utils.validatePlatform();
++    validateParameters();
++    if (!shouldRunTest()) {
++      return;
++    }
++    if (!results.isDirectory()) {
++      if (!results.mkdirs()) {
++        throw new MojoExecutionException("Failed to create " +
++            "output directory '" + results + "'!");
++      }
++    }
++    StringBuilder stdoutPrefixBuilder = new StringBuilder();
++    List<String> cmd = new LinkedList<String>();
++    cmd.add(binary.getAbsolutePath());
++
++    System.out.println("-------------------------------------------------------");
++    System.out.println(" C M A K E - N G   T E S T");
++    System.out.println("-------------------------------------------------------");
++    stdoutPrefixBuilder.append("TEST: ").
++        append(binary.getAbsolutePath());
++    System.out.print(binary.getAbsolutePath());
++    for (String entry : args) {
++      cmd.add(entry);
++      stdoutPrefixBuilder.append(" ").append(entry);
++      System.out.print(" ");
++      System.out.print(entry);
++    }
++    System.out.print("\n");
++    stdoutPrefixBuilder.append("\n");
++    ProcessBuilder pb = new ProcessBuilder(cmd);
++    Utils.addEnvironment(pb, env);
++    Utils.envronmentToString(stdoutPrefixBuilder, env);
++    Process proc = null;
++    TestThread testThread = null;
++    OutputToFileThread errThread = null, outThread = null;
++    int retCode = -1;
++    String status = "IN_PROGRESS";
++    try {
++      writeStatusFile(status);
++    } catch (IOException e) {
++      throw new MojoExecutionException("Error writing the status file", e);
++    }
++    try {
++      proc = pb.start();
++      errThread = new OutputToFileThread(proc.getErrorStream(),
++          new File(results, testName + ".stderr"), "");
++      errThread.start();
++      // Process#getInputStream gets the stdout stream of the process, which 
++      // acts as an input to us.
++      outThread = new OutputToFileThread(proc.getInputStream(),
++          new File(results, testName + ".stdout"),
++          stdoutPrefixBuilder.toString());
++      outThread.start();
++      testThread = new TestThread(proc);
++      testThread.start();
++      testThread.join(timeout * 1000);
++      if (!testThread.isAlive()) {
++        retCode = testThread.retCode();
++        testThread = null;
++        proc = null;
++      }
++    } catch (IOException e) {
++      throw new MojoExecutionException("IOException while executing the test " +
++          testName, e);
++    } catch (InterruptedException e) {
++      throw new MojoExecutionException("Interrupted while executing " + 
++          "the test " + testName, e);
++    } finally {
++      if (testThread != null) {
++        // If the test thread didn't exit yet, that means the timeout expired.
++        testThread.interrupt();
++        try {
++          testThread.join();
++        } catch (InterruptedException e) {
++          System.err.println("Interrupted while waiting for testThread");
++          e.printStackTrace(System.err);
++        }
++        status = "TIMED_OUT";
++      } else if (retCode == 0) {
++        status = "SUCCESS";
++      } else {
++        status = "ERROR " + String.valueOf(retCode);
++      }
++      try {
++        writeStatusFile(status);
++      } catch (Exception e) {
++        System.err.println("failed to write status file!  Error " + e);
++      }
++      if (proc != null) {
++        proc.destroy();
++      }
++      // Now that we've terminated the process, the threads servicing
++      // its pipes should receive end-of-file and exit.
++      // We don't want to terminate them manually or else we might lose
++      // some output.
++      if (errThread != null) {
++        try {
++          errThread.interrupt();
++          errThread.join();
++        } catch (InterruptedException e) {
++          System.err.println("Interrupted while waiting for errThread");
++          e.printStackTrace(System.err);
++        }
++        errThread.close();
++      }
++      if (outThread != null) {
++        try {
++          outThread.interrupt();
++          outThread.join();
++        } catch (InterruptedException e) {
++          System.err.println("Interrupted while waiting for outThread");
++          e.printStackTrace(System.err);
++        }
++        outThread.close();
++      }
++    }
++    System.out.println("STATUS: " + status);
++    System.out.println("-------------------------------------------------------");
++    if (status.equals("TIMED_OUT")) {
++      if (expectedResult.equals("success")) {
++        throw new MojoExecutionException("Test " + binary +
++            " timed out after " + timeout + " seconds!");
++      }
++    } else if (!status.equals("SUCCESS")) {
++      if (expectedResult.equals("success")) {
++        throw new MojoExecutionException("Test " + binary +
++            " returned " + status);
++      }
++    } else if (expectedResult.equals("failure")) {
++      throw new MojoExecutionException("Test " + binary +
++          " succeeded, but we expected failure!");
++    }
++  }
++}
+diff --git dev-support/cmake-maven-ng-plugin/src/main/java/org/apache/hadoop/cmake/maven/ng/Utils.java dev-support/cmake-maven-ng-plugin/src/main/java/org/apache/hadoop/cmake/maven/ng/Utils.java
+new file mode 100644
+index 0000000..e43c385
+--- /dev/null
++++ dev-support/cmake-maven-ng-plugin/src/main/java/org/apache/hadoop/cmake/maven/ng/Utils.java
+@@ -0,0 +1,229 @@
++package org.apache.hadoop.cmake.maven.ng;
++
++/*
++ * Copyright 2012 The Apache Software Foundation.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ *      http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++
++import org.apache.maven.plugin.MojoExecutionException;
++
++import java.io.BufferedWriter;
++import java.io.File;
++import java.io.FileOutputStream;
++import java.io.IOException;
++import java.io.InputStream;
++import java.io.InputStreamReader;
++import java.io.OutputStreamWriter;
++import java.io.UnsupportedEncodingException;
++import java.util.ArrayList;
++import java.util.LinkedList;
++import java.util.Map;
++
++/**
++ * Utilities.
++ */
++public class Utils {
++  static void validatePlatform() throws MojoExecutionException {
++    if (System.getProperty("os.name").toLowerCase().startsWith("windows")) {
++      throw new MojoExecutionException("CMake-NG does not (yet) support " +
++          "the Windows platform.");
++    }
++  }
++
++  /**
++   * Validate that the parameters look sane.
++   */
++  static void validateParams(File output, File source)
++      throws MojoExecutionException {
++    String cOutput = null, cSource = null;
++    try {
++      cOutput = output.getCanonicalPath();
++    } catch (IOException e) {
++      throw new MojoExecutionException("error getting canonical path " +
++          "for output");
++    }
++    try {
++      cSource = source.getCanonicalPath();
++    } catch (IOException e) {
++      throw new MojoExecutionException("error getting canonical path " +
++          "for source");
++    }
++    
++    // This doesn't catch all the bad cases-- we could be following symlinks or
++    // hardlinks, etc.  However, this will usually catch a common mistake.
++    if (cSource.startsWith(cOutput)) {
++      throw new MojoExecutionException("The source directory must not be " +
++          "inside the output directory (it would be destroyed by " +
++          "'mvn clean')");
++    }
++  }
++
++  /**
++   * Add environment variables to a ProcessBuilder.
++   */
++  static void addEnvironment(ProcessBuilder pb, Map<String, String> env) {
++    if (env == null) {
++      return;
++    }
++    Map<String, String> processEnv = pb.environment();
++    for (Map.Entry<String, String> entry : env.entrySet()) {
++      String val = entry.getValue();
++      if (val == null) {
++        val = "";
++      }
++      processEnv.put(entry.getKey(), val);
++    }
++  }
++
++  /**
++   * Pretty-print the environment.
++   */
++  static void envronmentToString(StringBuilder bld, Map<String, String> env) {
++    if ((env == null) || (env.isEmpty())) {
++      return;
++    }
++    bld.append("ENV: ");
++    for (Map.Entry<String, String> entry : env.entrySet()) {
++      String val = entry.getValue();
++      if (val == null) {
++        val = "";
++      }
++      bld.append(entry.getKey()).
++            append(" = ").append(val).append("\n");
++    }
++    bld.append("=======================================" +
++        "========================================\n");
++  }
++
++  /**
++   * This thread reads the output of the a subprocess and buffers it.
++   *
++   * Note that because of the way the Java Process APIs are designed, even
++   * if we didn't intend to ever display this output, we still would
++   * have to read it.  We are connected to the subprocess via a blocking pipe,
++   * and if we stop draining our end of the pipe, the subprocess will
++   * eventually be blocked if it writes enough to stdout/stderr.
++   */
++  public static class OutputBufferThread extends Thread {
++    private InputStreamReader reader;
++    private ArrayList<char[]> bufs;
++    
++    public OutputBufferThread(InputStream is) 
++        throws UnsupportedEncodingException {
++      this.reader = new InputStreamReader(is, "UTF8");
++      this.bufs = new ArrayList<char[]>();
++    }
++
++    public void run() {
++      try {
++        char[] arr = new char[8192];
++        while (true) {
++          int amt = reader.read(arr);
++          if (amt < 0) return;
++          char[] arr2 = new char[amt];
++          for (int i = 0; i < amt; i++) {
++            arr2[i] = arr[i];
++          }
++          bufs.add(arr2);
++        }
++      } catch (IOException e) {
++        e.printStackTrace();
++      } finally {
++        try {
++          reader.close();
++        } catch (IOException e) {
++          e.printStackTrace();
++        }
++      }
++    }
++
++    public void printBufs() {
++      for (char[] b : bufs) {
++        System.out.print(b);
++      }
++    }
++  }
++
++  /**
++   * This thread reads the output of the a subprocess and writes it to a
++   * thread.  There is an easier way to do this in Java 7, but we want to stay
++   * compatible with old JDK versions.
++   */
++  public static class OutputToFileThread extends Thread {
++    private InputStream is;
++    private FileOutputStream out;
++
++    private static void writePrefix(File outFile, String prefix) 
++        throws IOException {
++      if ((prefix == null) || (prefix.equals(""))) {
++        return;
++      }
++      FileOutputStream fos = new FileOutputStream(outFile, false);
++      BufferedWriter wr = null;
++      try {
++        wr = new BufferedWriter(new OutputStreamWriter(fos, "UTF8"));
++        wr.write(prefix);
++      } finally {
++        if (wr != null) {
++          wr.close();
++        } else {
++          fos.close();
++        }
++      }
++    }
++
++    public OutputToFileThread(InputStream is, File outFile, String prefix) 
++        throws IOException {
++      this.is = is;
++      writePrefix(outFile, prefix);
++      this.out = new FileOutputStream(outFile, true);
++    }
++
++    public void run() {
++      byte[] arr = new byte[8192];
++      try {
++        while (true) {
++          int amt = is.read(arr);
++          if (amt < 0) return;
++          out.write(arr, 0, amt);
++        }
++      } catch (IOException e) {
++        e.printStackTrace();
++      } finally {
++        close();
++      }
++    }
++
++    public void close() {
++      if (is != null) {
++        try {
++          is.close();
++        } catch (IOException e) {
++          e.printStackTrace();
++        } finally {
++          is = null;
++        }
++      }
++      if (out != null) {
++        try {
++          out.close();
++        } catch (IOException e) {
++          e.printStackTrace();
++        } finally {
++          out = null;
++        }
++      }
++    }
++  }
++}
+diff --git dev-support/pom.xml dev-support/pom.xml
+new file mode 100644
+index 0000000..721e231
+--- /dev/null
++++ dev-support/pom.xml
+@@ -0,0 +1,39 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<!--
++  Licensed under the Apache License, Version 2.0 (the "License");
++  you may not use this file except in compliance with the License.
++  You may obtain a copy of the License at
++
++    http://www.apache.org/licenses/LICENSE-2.0
++
++  Unless required by applicable law or agreed to in writing, software
++  distributed under the License is distributed on an "AS IS" BASIS,
++  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++  See the License for the specific language governing permissions and
++  limitations under the License. See accompanying LICENSE file.
++-->
++<project xmlns="http://maven.apache.org/POM/4.0.0"
++  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
++                      http://maven.apache.org/xsd/maven-4.0.0.xsd">
++  <modelVersion>4.0.0</modelVersion>
++  <parent>
++    <groupId>org.apache.hadoop</groupId>
++    <artifactId>hadoop-project</artifactId>
++    <version>3.0.0-SNAPSHOT</version>
++    <relativePath>../hadoop-project</relativePath>
++  </parent>
++  <groupId>org.apache.hadoop</groupId>
++  <artifactId>dev-support</artifactId>
++  <version>3.0.0-SNAPSHOT</version>
++  <description>Apache Hadoop Development Support</description>
++  <name>Apache Hadoop Development Support</name>
++  <packaging>pom</packaging>
++
++  <properties>
++    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
++  </properties>
++  <modules>
++    <module>cmake-maven-ng-plugin</module>
++  </modules>
++</project>
+diff --git dev-support/test-patch.sh dev-support/test-patch.sh
+index c051244..035af92 100755
+--- dev-support/test-patch.sh
++++ dev-support/test-patch.sh
+@@ -418,8 +418,9 @@ checkJavadocWarnings () {
+   echo ""
+   echo "There appear to be $javadocWarnings javadoc warnings generated by the patched build."
+ 
+-  #There are 6 warnings that are caused by things that are caused by using sun internal APIs.
+-  OK_JAVADOC_WARNINGS=6;
++  # There are 14 warnings that are caused by things that are caused by using sun
++  # internal APIs, and using Maven plugin annotations in comments.
++  OK_JAVADOC_WARNINGS=14;
+   ### if current warnings greater than OK_JAVADOC_WARNINGS
+   if [[ $javadocWarnings -ne $OK_JAVADOC_WARNINGS ]] ; then
+     JIRA_COMMENT="$JIRA_COMMENT
+@@ -728,8 +729,17 @@ of hadoop-common prior to running the unit tests in $ordered_modules"
+     cd $module
+     echo "  Running tests in $module"
+     echo "  $MVN clean install -fn $NATIVE_PROFILE $REQUIRE_TEST_LIB_HADOOP -D${PROJECT_NAME}PatchProcess"
++    find -name 'native-results' -type d -exec rm -rf {} \; # remove existing native test output files
+     $MVN clean install -fn $NATIVE_PROFILE $REQUIRE_TEST_LIB_HADOOP -D${PROJECT_NAME}PatchProcess
+     module_failed_tests=`find . -name 'TEST*.xml' | xargs $GREP  -l -E "<failure|<error" | sed -e "s|.*target/surefire-reports/TEST-|                  |g" | sed -e "s|\.xml||g"`
++    failed_native_tests=""
++    for status in $(find . -name '*.native-status'); do
++        if [ "xSUCCESS" != "x$(cat $status)" ]; then
++            bad_test=$(echo $(basename $status) | sed 's/.native-status//')
++            failed_native_tests="$failed_native_tests
++$bad_test"
++        fi
++    done
+     # With -fn mvn always exits with a 0 exit code.  Because of this we need to
+     # find the errors instead of using the exit code.  We assume that if the build
+     # failed a -1 is already given for that case
+@@ -737,6 +747,13 @@ of hadoop-common prior to running the unit tests in $ordered_modules"
+       failed_tests="${failed_tests}
+ ${module_failed_tests}"
+     fi
++    if [[ -n "$failed_native_tests" ]] ; then
++      # If there were native test failures, save a .tar.gz telling us what happened.
++      module_base=$(basename $module)
++      tar cvzf $PATCH_DIR/$module_base-native-results.tar.gz target/native-results
++      failed_tests="${failed_tests}
++${failed_native_tests}"
++    fi
+     cd -
+   done
+   if [[ -n "$failed_tests" ]] ; then
+diff --git hadoop-common-project/hadoop-common/pom.xml hadoop-common-project/hadoop-common/pom.xml
+index f6bbe0f..5e10ae0 100644
+--- hadoop-common-project/hadoop-common/pom.xml
++++ hadoop-common-project/hadoop-common/pom.xml
+@@ -241,6 +241,12 @@
+       <type>test-jar</type>
+       <scope>test</scope>
+     </dependency>
++    <dependency>
++      <groupId>org.apache.hadoop.cmake.maven.ng</groupId>
++      <artifactId>cmake-ng</artifactId>
++      <version>3.0.0-SNAPSHOT</version>
++      <scope>compile</scope>
++    </dependency>
+   </dependencies>
+ 
+   <build>
+@@ -497,36 +503,32 @@
+             </executions>
+           </plugin>
+           <plugin>
+-            <groupId>org.apache.maven.plugins</groupId>
+-            <artifactId>maven-antrun-plugin</artifactId>
++            <groupId>org.apache.hadoop.cmake.maven.ng</groupId>
++            <artifactId>cmake-ng</artifactId>
+             <executions>
+               <execution>
+-                <id>make</id>
+-                <phase>compile</phase>
+-                <goals><goal>run</goal></goals>
++                <id>cmake-compile</id>
++                <goals><goal>compile</goal></goals>
+                 <configuration>
+-                  <target>
+-                    <exec executable="cmake" dir="${project.build.directory}/native" failonerror="true">
+-                      <arg line="${basedir}/src/ -DGENERATED_JAVAH=${project.build.directory}/native/javah -DJVM_ARCH_DATA_MODEL=${sun.arch.data.model} -DREQUIRE_SNAPPY=${require.snappy} -DCUSTOM_SNAPPY_PREFIX=${snappy.prefix} -DCUSTOM_SNAPPY_LIB=${snappy.lib} -DCUSTOM_SNAPPY_INCLUDE=${snappy.include}"/>
+-                    </exec>
+-                    <exec executable="make" dir="${project.build.directory}/native" failonerror="true">
+-                      <arg line="VERBOSE=1"/>
+-                    </exec>
+-                  </target>
++                  <target>all</target>
++                  <source>${basedir}/src</source>
++                  <vars>
++                    <GENERATED_JAVAH>${project.build.directory}/native/javah</GENERATED_JAVAH>
++                    <JVM_ARCH_DATA_MODEL>${sun.arch.data.model}</JVM_ARCH_DATA_MODEL>
++                    <REQUIRE_SNAPPY>${require.snappy}</REQUIRE_SNAPPY>
++                    <CUSTOM_SNAPPY_PREFIX>${snappy.prefix}</CUSTOM_SNAPPY_PREFIX>
++                    <CUSTOM_SNAPPY_LIB>${snappy.lib}</CUSTOM_SNAPPY_LIB>
++                    <CUSTOM_SNAPPY_INCLUDE>${snappy.include}</CUSTOM_SNAPPY_INCLUDE>
++                  </vars>
+                 </configuration>
+               </execution>
+               <execution>
+-                <id>native_tests</id>
+-                <phase>test</phase>
+-                <goals><goal>run</goal></goals>
++                <id>test_bulk_crc32</id>
++                <goals><goal>test</goal></goals>
+                 <configuration>
+-                  <target>
+-                    <exec executable="sh" failonerror="true" dir="${project.build.directory}/native">
+-                      <arg value="-c"/>
+-                      <arg value="[ x$SKIPTESTS = xtrue ] || ${project.build.directory}/native/test_bulk_crc32"/>
+-                      <env key="SKIPTESTS" value="${skipTests}"/>
+-                    </exec>
+-                  </target>
++                  <binary>${project.build.directory}/native/test_bulk_crc32</binary>
++                  <timeout>300</timeout>
++                  <results>${project.build.directory}/native-results</results>
+                 </configuration>
+               </execution>
+             </executions>
+diff --git hadoop-hdfs-project/hadoop-hdfs/pom.xml hadoop-hdfs-project/hadoop-hdfs/pom.xml
+index dc842ca..9b13f66 100644
+--- hadoop-hdfs-project/hadoop-hdfs/pom.xml
++++ hadoop-hdfs-project/hadoop-hdfs/pom.xml
+@@ -177,6 +177,12 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
+       <artifactId>xmlenc</artifactId>
+       <scope>compile</scope>
+     </dependency>
++    <dependency>
++      <groupId>org.apache.hadoop.cmake.maven.ng</groupId>
++      <artifactId>cmake-ng</artifactId>
++      <version>3.0.0-SNAPSHOT</version>
++      <scope>compile</scope>
++    </dependency>
+   </dependencies>
+ 
+   <build>
+@@ -544,45 +550,57 @@ http://maven.apache.org/xsd/maven-4.0.0.xsd">
+           <plugin>
+             <groupId>org.apache.maven.plugins</groupId>
+             <artifactId>maven-antrun-plugin</artifactId>
++            <version>1.7</version>
+             <executions>
+               <execution>
+-                <id>make</id>
+-                <phase>compile</phase>
++                <id>define-classpath</id>
++                <phase>process-resources</phase>
+                 <goals><goal>run</goal></goals>
+                 <configuration>
++                  <exportAntProperties>true</exportAntProperties>
+                   <target>
+-                    <mkdir dir="${project.build.directory}/native"/>
+-                    <exec executable="cmake" dir="${project.build.directory}/native" 
+-                        failonerror="true">
+-                      <arg line="${basedir}/src/ -DGENERATED_JAVAH=${project.build.directory}/native/javah -DJVM_ARCH_DATA_MODEL=${sun.arch.data.model} -DREQUIRE_LIBWEBHDFS=${require.libwebhdfs} -DREQUIRE_FUSE=${require.fuse}"/>
+-                    </exec>
+-                    <exec executable="make" dir="${project.build.directory}/native" failonerror="true">
+-                      <arg line="VERBOSE=1"/>
+-                    </exec>
++                    <property name="test.classpath" refid="maven.test.classpath"/>
+                   </target>
+                 </configuration>
+               </execution>
++            </executions>
++          </plugin>
++          <plugin>
++            <groupId>org.apache.hadoop.cmake.maven.ng</groupId>
++            <artifactId>cmake-ng</artifactId>
++            <executions>
+               <execution>
+-                <id>native_tests</id>
+-                <phase>test</phase>
+-                <goals><goal>run</goal></goals>
++                <id>cmake-compile</id>
++                <goals><goal>compile</goal></goals>
+                 <configuration>
+-                  <target>
+-                    <property name="compile_classpath" refid="maven.compile.classpath"/>
+-                    <property name="test_classpath" refid="maven.test.classpath"/>
+-                    <exec executable="sh" failonerror="true" dir="${project.build.directory}/native/">
+-                      <arg value="-c"/>
+-                      <arg value="[ x$SKIPTESTS = xtrue ] || ${project.build.directory}/native/test_libhdfs_threaded"/>
+-                      <env key="CLASSPATH" value="${test_classpath}:${compile_classpath}"/>
+-                      <env key="SKIPTESTS" value="${skipTests}"/>
+-                    </exec>
+-                    <exec executable="sh" failonerror="true" dir="${project.build.directory}/native/">
+-                        <arg value="-c"/>
+-                        <arg value="[ x$SKIPTESTS = xtrue ] || ${project.build.directory}/native/test_libhdfs_threaded"/>
+-                      <env key="CLASSPATH" value="${test_classpath}:${compile_classpath}"/>
+-                      <env key="SKIPTESTS" value="${skipTests}"/>
+-                    </exec>
+-                  </target>
++                  <target>all</target>
++                  <source>${basedir}/src</source>
++                  <vars>
++                    <GENERATED_JAVAH>${project.build.directory}/native/javah</GENERATED_JAVAH>
++                    <JVM_ARCH_DATA_MODEL>${sun.arch.data.model}</JVM_ARCH_DATA_MODEL>
++                    <REQUIRE_FUSE>${require.fuse}</REQUIRE_FUSE>
++                    <REQUIRE_LIBWEBHDFS>${require.libwebhdfs}</REQUIRE_LIBWEBHDFS>
++                  </vars>
++                </configuration>
++              </execution>
++              <execution>
++                <id>test_libhdfs_threaded</id>
++                <goals><goal>test</goal></goals>
++                <configuration>
++                  <binary>${project.build.directory}/native/test_libhdfs_threaded</binary>
++                  <env><CLASSPATH>${test.classpath}</CLASSPATH></env>
++                  <timeout>300</timeout>
++                  <results>${project.build.directory}/native-results</results>
++                </configuration>
++              </execution>
++              <execution>
++                <id>test_native_mini_dfs</id>
++                <goals><goal>test</goal></goals>
++                <configuration>
++                  <binary>${project.build.directory}/native/test_native_mini_dfs</binary>
++                  <env><CLASSPATH>${test.classpath}</CLASSPATH></env>
++                  <timeout>300</timeout>
++                  <results>${project.build.directory}/native-results</results>
+                 </configuration>
+               </execution>
+             </executions>
+diff --git hadoop-mapreduce-project/src/test/mapred/org/apache/hadoop/mapred/test.jar hadoop-mapreduce-project/src/test/mapred/org/apache/hadoop/mapred/test.jar
+deleted file mode 100644
+index 07539b138db309800aec87b5568eedcfe2717ff0..0000000000000000000000000000000000000000
+GIT binary patch
+literal 0
+HcmV?d00001
+
+literal 518
+zcmWIWW@Zs#-~htEnLkY!kN_tG3xls~h@-BjpPT-_Qw$8u3<2Kk93T};P-Ou)HH!dM
+zz%~0i`gyv!28ZbRx_$ONbK1vSSMMUPx31Q?Gv_x48C)@b@U%$J%U8$K_hRWP7S0*3
+zB#%hX(9B?&{!H^nnwt1i@o=%}OP+~oS3FaFo%yNgV-X|RA-Vf*U2_Lo1HuT0{6O;s
+z$h{@0#U*+r6(!s!Pw0d(EOKd`bmfsy>y|TfLRv39x+2oL<&V;afV8+>PDM#YY#ryk
+zbhNGot~jL=;Bm$~@Wg5TQ@&>yvo)_hW&&GVF!|6+N1&meU~3tfL>N$m4;D6{;6nxQ
+z@Bjs7fH$gEWZ!@S4*_g}Ot@C0phPwS<ZEPyfny17#4#WX76t*{tZX0&W+2=Qq-_~N
+FJOG5Ze^~$k
+
+diff --git hadoop-project/pom.xml hadoop-project/pom.xml
+index b5b113c..671110e 100644
+--- hadoop-project/pom.xml
++++ hadoop-project/pom.xml
+@@ -660,6 +660,12 @@
+         <artifactId>hsqldb</artifactId>
+         <version>2.0.0</version>
+       </dependency>
++      <dependency>
++        <groupId>org.apache.hadoop.cmake.maven.ng</groupId>
++        <artifactId>cmake-ng</artifactId>
++        <version>3.0.0-SNAPSHOT</version>
++        <scope>compile</scope>
++      </dependency>
+     </dependencies>
+   </dependencyManagement>
+ 
+@@ -700,6 +706,11 @@
+           <version>2.3.1</version>
+         </plugin>
+         <plugin>
++          <groupId>org.apache.hadoop.cmake.maven.ng</groupId>
++          <artifactId>cmake-ng</artifactId>
++          <version>3.0.0-SNAPSHOT</version>
++        </plugin>
++        <plugin>
+           <groupId>org.apache.maven.plugins</groupId>
+           <artifactId>maven-jar-plugin</artifactId>
+           <version>2.3.1</version>
+diff --git hadoop-tools/hadoop-pipes/pom.xml hadoop-tools/hadoop-pipes/pom.xml
+index 70875f2..a33cbb8 100644
+--- hadoop-tools/hadoop-pipes/pom.xml
++++ hadoop-tools/hadoop-pipes/pom.xml
+@@ -31,6 +31,15 @@
+     <hadoop.log.dir>${project.build.directory}/log</hadoop.log.dir>
+   </properties>
+ 
++  <dependencies>
++    <dependency>
++      <groupId>org.apache.hadoop.cmake.maven.ng</groupId>
++      <artifactId>cmake-ng</artifactId>
++      <version>3.0.0-SNAPSHOT</version>
++      <scope>compile</scope>
++    </dependency>
++  </dependencies>
++
+   <profiles>
+     <profile>
+       <id>native</id>
+@@ -40,38 +49,23 @@
+       <build>
+         <plugins>
+           <plugin>
+-            <groupId>org.apache.maven.plugins</groupId>
+-            <artifactId>maven-antrun-plugin</artifactId>
++            <groupId>org.apache.hadoop.cmake.maven.ng</groupId>
++            <artifactId>cmake-ng</artifactId>
+             <executions>
+               <execution>
+-                <id>make</id>
+-                <phase>compile</phase>
+-                <goals><goal>run</goal></goals>
+-                <configuration>
+-                  <target>
+-                    <mkdir dir="${project.build.directory}/native"/>
+-                    <exec executable="cmake" dir="${project.build.directory}/native" 
+-                        failonerror="true">
+-                      <arg line="${basedir}/src/ -DJVM_ARCH_DATA_MODEL=${sun.arch.data.model}"/>
+-                    </exec>
+-                    <exec executable="make" dir="${project.build.directory}/native" failonerror="true">
+-                      <arg line="VERBOSE=1"/>
+-                    </exec>
+-                  </target>
+-                </configuration>
+-              </execution>
+-              <!-- TODO wire here native testcases
+-              <execution>
+-                <id>test</id>
+-                <phase>test</phase>
+-                <goals>
+-                  <goal>test</goal>
+-                </goals>
++                <id>cmake-compile</id>
++                <goals><goal>compile</goal></goals>
+                 <configuration>
+-                  <destDir>${project.build.directory}/native/target</destDir>
++                  <target>all</target>
++                  <source>${basedir}/src</source>
++                  <vars>
++                    <JVM_ARCH_DATA_MODEL>${sun.arch.data.model}</JVM_ARCH_DATA_MODEL>
++                  </vars>
++                  <env>
++                    <CFLAGS>${container-executor.additional_cflags}</CFLAGS>
++                  </env>
+                 </configuration>
+               </execution>
+-              -->
+             </executions>
+           </plugin>
+         </plugins>
+diff --git hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-nodemanager/pom.xml hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-nodemanager/pom.xml
+index 0d59570..b782f56 100644
+--- hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-nodemanager/pom.xml
++++ hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-nodemanager/pom.xml
+@@ -39,6 +39,12 @@
+       <groupId>org.apache.hadoop</groupId>
+       <artifactId>hadoop-yarn-server-common</artifactId>
+     </dependency>
++    <dependency>
++      <groupId>org.apache.hadoop.cmake.maven.ng</groupId>
++      <artifactId>cmake-ng</artifactId>
++      <version>3.0.0-SNAPSHOT</version>
++      <scope>compile</scope>
++    </dependency>
+   </dependencies>
+ 
+   <profiles>
+@@ -47,40 +53,31 @@
+       <build>
+         <plugins>
+           <plugin>
+-            <groupId>org.apache.maven.plugins</groupId>
+-            <artifactId>maven-antrun-plugin</artifactId>
+-            <configuration>
+-              <skipTests>false</skipTests>
+-            </configuration>
++            <groupId>org.apache.hadoop.cmake.maven.ng</groupId>
++            <artifactId>cmake-ng</artifactId>
+             <executions>
+               <execution>
+-                <id>make</id>
+-                <phase>compile</phase>
+-                <goals><goal>run</goal></goals>
++                <id>cmake-compile</id>
++                <goals><goal>compile</goal></goals>
+                 <configuration>
+-                  <target>
+-                    <mkdir dir="${project.build.directory}/native/target"/>
+-                    <exec executable="cmake" dir="${project.build.directory}/native" failonerror="true">
+-                      <arg line="${basedir}/src/ -DHADOOP_CONF_DIR=${container-executor.conf.dir} -DJVM_ARCH_DATA_MODEL=${sun.arch.data.model}"/>
+-                      <env key="CFLAGS" value="${container-executor.additional_cflags}"/>
+-                    </exec>
+-                    <exec executable="make" dir="${project.build.directory}/native" failonerror="true">
+-                      <arg line="VERBOSE=1"/>
+-                    </exec>
+-                  </target>
++                  <target>all</target>
++                  <source>${basedir}/src</source>
++                  <vars>
++                    <HADOOP_CONF_DIR>${container-executor.conf.dir}</HADOOP_CONF_DIR>
++                    <JVM_ARCH_DATA_MODEL>${sun.arch.data.model}</JVM_ARCH_DATA_MODEL>
++                  </vars>
++                  <env>
++                    <CFLAGS>${container-executor.additional_cflags}</CFLAGS>
++                  </env>
+                 </configuration>
+               </execution>
+               <execution>
+-                <id>native_tests</id>
+-                <phase>test</phase>
++                <id>test-container-executor</id>
++                <goals><goal>test</goal></goals>
+                 <configuration>
+-                  <target>
+-                    <exec executable="sh" failonerror="true" dir="${project.build.directory}/native">
+-                      <arg value="-c"/>
+-                      <arg value="[ x$SKIPTESTS = xtrue ] || test-container-executor"/>
+-                      <env key="SKIPTESTS" value="${skipTests}"/>
+-                    </exec>
+-                  </target>
++                  <binary>${project.build.directory}/native/target/usr/local/bin/test-container-executor</binary>
++                  <timeout>300</timeout>
++                  <results>${project.build.directory}/native-results</results>
+                 </configuration>
+               </execution>
+             </executions>
+diff --git hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-nodemanager/src/main/native/container-executor/test/test-container-executor.c hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-nodemanager/src/main/native/container-executor/test/test-container-executor.c
+index 6d7e154a..22670e8 100644
+--- hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-nodemanager/src/main/native/container-executor/test/test-container-executor.c
++++ hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-nodemanager/src/main/native/container-executor/test/test-container-executor.c
+@@ -400,6 +400,13 @@ void run_test_in_child(const char* test_name, void (*func)()) {
+ }
+ 
+ void test_signal_container() {
++  sigset_t set;
++
++  // unblock SIGQUIT
++  sigemptyset(&set);
++  sigaddset(&set, SIGQUIT);
++  sigprocmask(SIG_UNBLOCK, &set, NULL);
++
+   printf("\nTesting signal_container\n");
+   fflush(stdout);
+   fflush(stderr);
+diff --git pom.xml pom.xml
+index bb7f9b3..755d97e 100644
+--- pom.xml
++++ pom.xml
+@@ -84,6 +84,7 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
+   </properties>
+ 
+   <modules>
++    <module>dev-support</module>
+     <module>hadoop-project</module>
+     <module>hadoop-project-dist</module>
+     <module>hadoop-assemblies</module>
