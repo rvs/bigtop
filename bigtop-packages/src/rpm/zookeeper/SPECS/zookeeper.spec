@@ -126,13 +126,13 @@ This package starts the zookeeper server on startup
 %setup -n %{name}-%{zookeeper_base_version}
 
 %build
-bash %{SOURCE1} -Dversion=%{version}
+bash %{SOURCE1}
 
 %install
 %__rm -rf $RPM_BUILD_ROOT
 cp $RPM_SOURCE_DIR/zookeeper.1 $RPM_SOURCE_DIR/zoo.cfg .
 sh %{SOURCE2} \
-          --build-dir=build/%{name}-%{zookeeper_version} \
+          --build-dir=build/%{name}-%{zookeeper_base_version} \
           --doc-dir=%{doc_zookeeper} \
           --prefix=$RPM_BUILD_ROOT
 
