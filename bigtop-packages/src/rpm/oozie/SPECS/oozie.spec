@@ -129,7 +129,8 @@ Requires: bigtop-utils
 
 
 %prep
-%setup -n oozie-%{oozie_base_version}
+#%setup -n oozie-%{oozie_base_version}
+%setup -n apache-oozie-54be1ee
 
 %build
     mkdir -p distro/downloads
