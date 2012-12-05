@@ -227,7 +227,7 @@ class hadoop {
 
     exec { "HDFS init $title":
       user => "hdfs",
-      command => "/bin/bash -c 'hadoop fs -mkdir $title ; hadoop fs -chmod $perm $title && hadoop fs -chown $user $title'",
+      command => "/bin/bash -c '(hadoop fs -mkdir $title ; hadoop fs -chmod $perm $title && hadoop fs -chown $user $title) > /dev/null 2>&1'",
       require => Service["hadoop-hdfs-namenode"],
     }
     Exec <| title == "activate nn1" |>  -> Exec["HDFS init $title"]
@@ -243,7 +243,7 @@ class hadoop {
 
     exec { "HDFS rsync $title":
       user => "hdfs",
-      command => "/bin/bash -c 'hadoop fs -mkdir -p $title ; hadoop fs -put -f $src $title'",
+      command => "/bin/bash -c '(hadoop fs -mkdir -p $title ; hadoop fs -put -f $src $title) >/dev/null 2>&1'",
       require => Service["hadoop-hdfs-namenode"],
     }
     Exec <| title == "activate nn1" |>  -> Exec["HDFS rsync $title"]
