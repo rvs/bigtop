@@ -14,10 +14,9 @@
 # limitations under the License.
 
 require bigtop_util
-$puppet_confdir = get_setting("confdir")
 $default_yumrepo = "http://bigtop01.cloudera.org:8080/job/Bigtop-trunk-Repository/./label=centos6//lastSuccessfulBuild/artifact/repo/"
 $default_yumrepo_git = "http://bigtop01.cloudera.org:8080/job/Bigtop-git/label=centos6/lastSuccessfulBuild/artifact/output/"
-$extlookup_datadir="$puppet_confdir/config"
+$extlookup_datadir="bigtop-deploy/puppet/config"
 $extlookup_precedence = ["site", "default"]
 $jdk_package_name = extlookup("jdk_package_name", "jdk")
 
