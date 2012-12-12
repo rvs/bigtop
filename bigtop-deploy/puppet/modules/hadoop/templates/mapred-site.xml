@@ -131,6 +131,15 @@
     <final>true</final>
   </property>
 
+  <property>
+    <name>mapreduce.map.memory.mb</name>
+    <value>1000</value>
+  </property>
+  <property>
+    <name>mapreduce.reduce.memory.mb</name>
+    <value>1000</value>
+  </property>
+
   <!-- property>
     <name>mapreduce.cluster.temp.dir</name>
     <value>/mapred/system</value>

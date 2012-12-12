@@ -133,4 +133,13 @@
         $HADOOP_YARN_HOME/*,$HADOOP_YARN_HOME/lib/*
      </value>
   </property>
+
+  <property>
+    <name>mapreduce.map.memory.mb</name>
+    <value>1000</value>
+  </property>
+  <property>
+    <name>mapreduce.reduce.memory.mb</name>
+    <value>1000</value>
+  </property>
 </configuration>
