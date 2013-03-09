@@ -68,6 +68,8 @@ clean: $(TARGETS_CLEAN)
 realclean: clean
 	-rm -rf $(DL_DIR)
 
+pkgsrc: $(TARGETS_PKGSRC)
+
 srpm: $(TARGETS_SRPM)
 
 rpm: $(TARGETS_RPM)
@@ -91,4 +93,4 @@ dist: realclean
 	cd $(DIST_DIR) && tar -cvzf "$(DIST_DIR)/bigtop-$(BIGTOP_VERSION).tar.gz" "bigtop-$(BIGTOP_VERSION)"
 
 .DEFAULT_GOAL:= help
-.PHONY: clean package-help help-header packages all world help srpm sdeb
+.PHONY: clean package-help help-header packages all world help srpm sdeb pkgsrc

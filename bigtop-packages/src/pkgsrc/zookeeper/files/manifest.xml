@@ -1,0 +1,59 @@
+<?xml version='1.0'?>
+<!DOCTYPE service_bundle SYSTEM '/usr/share/lib/xml/dtd/service_bundle.dtd.1'>
+<service_bundle type='manifest' name='export'>
+  <service name='bigtop/zookeeper' type='service' version='0'>
+    <create_default_instance enabled="false" />
+    <single_instance />
+    <dependency name='fs-local' grouping='require_all' restart_on='none' type='service'>
+      <service_fmri value='svc:/system/filesystem/local' />
+    </dependency>
+    <dependency name='loopback' grouping='require_all' restart_on='error' type='service'>
+      <service_fmri value='svc:/network/loopback:default' />
+    </dependency>
+    <dependency name='physical' grouping='require_all' restart_on='error' type='service'>
+      <service_fmri value='svc:/network/physical:default' />
+    </dependency>
+    <dependency name='name-services' grouping='require_all'  restart_on='refresh' type='service'>
+      <service_fmri value='svc:/milestone/name-services' />
+    </dependency>
+    <dependency name='system-log' grouping='optional_all' restart_on='none' type='service'>
+      <service_fmri value='svc:/system/system-log' />
+    </dependency>
+    <dependency name='config-files' grouping='require_all' restart_on='refresh' type='path'>
+      <service_fmri value='file:///opt/local/etc/zookeeper/zoo.cfg' />
+    </dependency>
+    <exec_method name='start' type='method' exec='/opt/local/lib/zookeeper/bin/zkServer.sh start' timeout_seconds='60' >
+      <method_context>
+        <method_credential user="zookeeper" group="zookeeper"/>
+        <method_environment>
+          <envvar name="SERVER_JVMFLAGS" value="-Djava.net.preferIPv4Stack=true"/>
+          <envvar name="ZOO_LOG_DIR" value="/var/lib/zookeeper"/>
+          <envvar name="ZOO_DATADIR" value="/var/lib/zookeeper"/>
+          <envvar name="ZOOPIDFILE" value="/var/lib/zookeeper/zookeeper.pid"/>
+          <envvar name="PATH" value="/opt/local/gnu/bin:/opt/local/bin:/opt/local/sbin:/usr/bin:/usr/sbin"/>
+        </method_environment>
+      </method_context>
+    </exec_method>
+    <exec_method name='stop' type='method' exec='/opt/local/lib/zookeeper/bin/zkServer.sh stop' timeout_seconds='60'>
+      <method_context>
+        <method_credential user="zookeeper" group="zookeeper"/>
+        <method_environment>
+          <envvar name="SERVER_JVMFLAGS" value="-Djava.net.preferIPv4Stack=true"/>
+          <envvar name="ZOO_LOG_DIR" value="/var/lib/zookeeper"/>
+          <envvar name="ZOO_DATADIR" value="/var/lib/zookeeper"/>
+          <envvar name="ZOOPIDFILE" value="/var/lib/zookeeper/zookeeper.pidd"/>
+        </method_environment>
+      </method_context>
+    </exec_method>
+    <stability value='Evolving' />
+    <template>
+      <common_name>
+        <loctext xml:lang='C'>Apache Zookeeper</loctext>
+      </common_name>
+      <documentation>
+        <manpage title='zookeeper' section='1' />
+        <doc_link name='zookeeper.apache.org' uri='http://zookeeper.apache.org' />
+      </documentation>
+    </template>
+  </service>
+</service_bundle>

@@ -44,6 +44,45 @@ $(BUILD_DIR)/%/.tar:
                $($(PKG)_NAME)-$(PKG_PKG_VERSION)$(BIGTOP_BUILD_STAMP)
 	touch $@
 
+# Make pkgsrc package
+#	PKG_NAME_FOR_PKG=$(subst -,_,$($(PKG)_NAME)); \
+#	rpmbuild --define "_topdir $(PKG_BUILD_DIR)/rpm/" \
+#						--define "$${PKG_NAME_FOR_PKG}_base_version $($(PKG)_BASE_VERSION)" \
+#						--define "$${PKG_NAME_FOR_PKG}_version $($(PKG)_PKG_VERSION)$(BIGTOP_BUILD_STAMP)" \
+#						--define "$${PKG_NAME_FOR_PKG}_release $($(PKG)_RELEASE_VERSION)%{?dist}" \
+#						-bs \
+#						--nodeps \
+#						--buildroot="$(PKG_BUILD_DIR)/rpm/INSTALL" \
+#						$(PKG_BUILD_DIR)/rpm/SPECS/$($(PKG)_NAME).spec
+#
+#
+#	$(PKG)_RELEASE_DIST=$(shell rpmbuild --eval '%{?dist}' 2>/dev/null); \
+
+$(BUILD_DIR)/%/.pkgsrc:
+	-rm -rf $(PKG_BUILD_DIR)/pkgsrc/
+	mkdir -p $(PKG_BUILD_DIR)/pkgsrc/bigtop $(PKG_BUILD_DIR)/pkgsrc/packages
+	for i in $(HACK_PKGSRC)/* ; do ln -s $$i $(PKG_BUILD_DIR)/pkgsrc >/dev/null 2>&1 || : ; done # FIXME:  
+	cp -r $(BASE_DIR)/bigtop-packages/src/pkgsrc/$($(PKG)_NAME) $(PKG_BUILD_DIR)/pkgsrc/bigtop
+	mkdir $(PKG_BUILD_DIR)/pkgsrc/bigtop/$($(PKG)_NAME)/files  || :
+	[ -d $(BASE_DIR)/bigtop-packages/src/common/$($(PKG)_NAME) ] && cp -r $(BASE_DIR)/bigtop-packages/src/common/$($(PKG)_NAME)/* $(PKG_BUILD_DIR)/pkgsrc/bigtop/$($(PKG)_NAME)/files
+	echo -e "$(BIGTOP_BOM)" | tr ' ' '\012' >> $(PKG_BUILD_DIR)/pkgsrc/bigtop/$($(PKG)_NAME)/files/bigtop.bom
+	(cd $(PKG_BUILD_DIR)/pkgsrc/bigtop/$($(PKG)_NAME) ; bmake package)
+	mkdir -p $($(PKG)_OUTPUT_DIR)/
+	cp $(PKG_BUILD_DIR)/pkgsrc/packages/All/$($(PKG)_PKG_NAME)-$($(PKG)_PKG_VERSION).tgz $($(PKG)_OUTPUT_DIR)/
+	touch $@
+
+# Make binary RPMs
+$(BUILD_DIR)/%/.rpm:
+	$(PKG)_RELEASE_DIST=$(shell rpmbuild --eval '%{?dist}' 2>/dev/null); \
+	SRCRPM=$($(PKG)_OUTPUT_DIR)/$($(PKG)_PKG_NAME)-$($(PKG)_PKG_VERSION)$(BIGTOP_BUILD_STAMP)-$($(PKG)_RELEASE_VERSION)$${$(PKG)_RELEASE_DIST}.src.rpm; \
+	rpmbuild --define "_topdir $(PKG_BUILD_DIR)/rpm/" \
+						--define "$($(PKG)_NAME)_base_version $($(PKG)_BASE_VERSION)" \
+						--define "$($(PKG)_NAME)_version $($(PKG)_PKG_VERSION)$(BIGTOP_BUILD_STAMP)" \
+						--define "$($(PKG)_NAME)_release $($(PKG)_RELEASE_VERSION)%{?dist}" \
+						--rebuild $${SRCRPM}
+	cp -r $(PKG_BUILD_DIR)/rpm/RPMS/*/* $($(PKG)_OUTPUT_DIR)/
+	touch $@
+
 # Make source RPMs
 $(BUILD_DIR)/%/.srpm:
 	-rm -rf $(PKG_BUILD_DIR)/rpm/
@@ -172,6 +211,7 @@ endif
 
 $(2)_TARGET_DL       = $$($(2)_BUILD_DIR)/.download
 $(2)_TARGET_TAR      = $$($(2)_BUILD_DIR)/.tar
+$(2)_TARGET_PKGSRC   = $$($(2)_BUILD_DIR)/.pkgsrc
 $(2)_TARGET_SRPM     = $$($(2)_BUILD_DIR)/.srpm
 $(2)_TARGET_RPM      = $$($(2)_BUILD_DIR)/.rpm
 $(2)_TARGET_YUM      = $$($(2)_BUILD_DIR)/.yum
@@ -185,6 +225,9 @@ $(1)-download: $$($(2)_TARGET_DL)
 
 # Make a patched tarball (patch could be null)
 $(1)-tar: $(1)-download $$($(2)_TARGET_TAR)
+
+# Make a patched tarball (patch could be null)
+$(1)-pkgsrc: $(1)-download $$($(2)_TARGET_PKGSRC)
 
 # To make srpms, we need to build the package
 $(1)-srpm: $(1)-download $$($(2)_TARGET_SRPM)
@@ -237,11 +280,11 @@ $(1)-info:
 
 # Implicit rules with PKG variable
 $$($(2)_TARGET_DL):       PKG=$(2)
-$$($(2)_TARGET_TAR) $$($(2)_TARGET_APT) $$($(2)_TARGET_RPM) $$($(2)_TARGET_SRPM) $$($(2)_TARGET_SDEB) $$($(2)_TARGET_DEB): PKG=$(2)
-$$($(2)_TARGET_TAR) $$($(2)_TARGET_RPM) $$($(2)_TARGET_SRPM) $$($(2)_TARGET_SDEB) $$($(2)_TARGET_DEB): PKG_BASE_VERSION=$$($(2)_BASE_VERSION)
-$$($(2)_TARGET_TAR) $$($(2)_TARGET_APT) $$($(2)_TARGET_RPM) $$($(2)_TARGET_SRPM) $$($(2)_TARGET_SDEB) $$($(2)_TARGET_DEB): PKG_PKG_VERSION=$$($(2)_PKG_VERSION)
-$$($(2)_TARGET_TAR) $$($(2)_TARGET_RPM) $$($(2)_TARGET_SRPM) $$($(2)_TARGET_SDEB) $$($(2)_TARGET_DEB): PKG_SOURCE_DIR=$$($(2)_SOURCE_DIR)
-$$($(2)_TARGET_TAR) $$($(2)_TARGET_RPM) $$($(2)_TARGET_SRPM) $$($(2)_TARGET_SDEB) $$($(2)_TARGET_DEB): PKG_BUILD_DIR=$$($(2)_BUILD_DIR)
+$$($(2)_TARGET_PKGSRC) $$($(2)_TARGET_TAR) $$($(2)_TARGET_APT) $$($(2)_TARGET_RPM) $$($(2)_TARGET_SRPM) $$($(2)_TARGET_SDEB) $$($(2)_TARGET_DEB): PKG=$(2)
+$$($(2)_TARGET_PKGSRC) $$($(2)_TARGET_TAR) $$($(2)_TARGET_RPM) $$($(2)_TARGET_SRPM) $$($(2)_TARGET_SDEB) $$($(2)_TARGET_DEB): PKG_BASE_VERSION=$$($(2)_BASE_VERSION)
+$$($(2)_TARGET_PKGSRC) $$($(2)_TARGET_TAR) $$($(2)_TARGET_APT) $$($(2)_TARGET_RPM) $$($(2)_TARGET_SRPM) $$($(2)_TARGET_SDEB) $$($(2)_TARGET_DEB): PKG_PKG_VERSION=$$($(2)_PKG_VERSION)
+$$($(2)_TARGET_PKGSRC) $$($(2)_TARGET_TAR) $$($(2)_TARGET_RPM) $$($(2)_TARGET_SRPM) $$($(2)_TARGET_SDEB) $$($(2)_TARGET_DEB): PKG_SOURCE_DIR=$$($(2)_SOURCE_DIR)
+$$($(2)_TARGET_PKGSRC) $$($(2)_TARGET_TAR) $$($(2)_TARGET_RPM) $$($(2)_TARGET_SRPM) $$($(2)_TARGET_SDEB) $$($(2)_TARGET_DEB): PKG_BUILD_DIR=$$($(2)_BUILD_DIR)
 
 
 TARGETS += $(1)
