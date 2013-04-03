@@ -31,6 +31,7 @@ Requires: %{name}-common = %{version}-%{release}
 Requires: %{name}-server = %{version}-%{release}
 Requires: %{name}-beeswax = %{version}-%{release}
 Requires: %{name}-oozie = %{version}-%{release}
+Requires: %{name}-pig = %{version}-%{release}
 
 ################ RPM CUSTOMIZATION ##############################
 # Disable automatic Provides generation - otherwise we will claim to provide all of the
@@ -76,6 +77,7 @@ AutoReqProv: no
 %define about_app_dir %{hue_dir}/apps/about
 %define beeswax_app_dir %{hue_dir}/apps/beeswax
 %define oozie_app_dir %{hue_dir}/apps/oozie
+%define pig_app_dir %{hue_dir}/apps/pig
 %define filebrowser_app_dir %{hue_dir}/apps/filebrowser
 %define help_app_dir %{hue_dir}/apps/help
 %define jobbrowser_app_dir %{hue_dir}/apps/jobbrowser
@@ -116,7 +118,7 @@ if [ "$1" = 0 ] ; then \
   find %{apps_dir}/%1 -name \*.egg-info -type f -print0 | xargs -0 /bin/rm -fR   \
 fi \
 find %{apps_dir}/%1 -iname \*.py[co] -type f -print0 | xargs -0 /bin/rm -f \
-chown -R hue:hue /var/log/hue /var/lib/hue 
+chown -R hue:hue /var/log/hue /var/lib/hue || :
 
 %description
 Hue is a browser-based desktop interface for interacting with Hadoop.
@@ -241,7 +243,7 @@ fi
 %{hue_dir}/Makefile.sdk
 %{hue_dir}/Makefile.vars
 %{hue_dir}/Makefile.vars.priv
-%{hue_dir}/README
+%{hue_dir}/README.rst
 %{hue_dir}/tools
 %{hue_dir}/VERSION
 %{hue_dir}/build/env/bin/*
@@ -267,8 +269,7 @@ fi
 # beeswax, oozie are packaged as a plugin app
 %exclude %{beeswax_app_dir}
 %exclude %{oozie_app_dir}
-
-# %exclude %{hadoop_lib}
+%exclude %{pig_app_dir}
 
 ############################################################
 # No-arch packages - plugins and conf
@@ -307,21 +308,6 @@ if [ $1 -ge 1 ]; then
         service %{name} condrestart >/dev/null 2>&1 
 fi
 
-#### PLUGINS ######
-# FIXME: Hue plugins don't quite work with Hadoop 2.X
-# %package -n %{name}-plugins
-# Summary: Hadoop plugins for Hue
-# Requires: hadoop, bigtop-utils
-# Group: Applications/Engineering
-# %description -n %{name}-plugins
-# Plugins for Hue
-#
-# This package should be installed on each node in the Hadoop cluster.
-#
-# %files -n %{name}-plugins
-# %{hadoop_lib}/
-
-
 #### HUE-BEESWAX PLUGIN ######
 %package -n %{name}-beeswax
 Summary: A UI for Hive on Hue
@@ -359,3 +345,21 @@ managing the XML specification.
 
 %files -n %{name}-oozie
 %{oozie_app_dir}
+
+#### HUE-PIG PLUGIN ######
+%package -n %{name}-pig
+Summary: A UI for Pig on Hue
+Group: Applications/Engineering
+Requires: make
+Requires: %{name}-common = %{version}-%{release}
+
+%description -n %{name}-pig
+A web interface for Pig.
+
+It allows users to construct and run Pig jobs.
+
+%app_post_macro pig
+%app_preun_macro pig
+
+%files -n %{name}-pig
+%{pig_app_dir}
