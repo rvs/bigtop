@@ -16,6 +16,34 @@
 
 set -ex
 
+patch -p0 <<'__EOT__'
+--- hadoop-mapreduce-project/hadoop-mapreduce-client/hadoop-mapreduce-client-app/src/main/java/org/apache/hadoop/mapreduce/v2/app/MRAppMaster.java.orig	2013-04-09 19:45:29.000000000 -0700
++++ hadoop-mapreduce-project/hadoop-mapreduce-client/hadoop-mapreduce-client-app/src/main/java/org/apache/hadoop/mapreduce/v2/app/MRAppMaster.java	2013-05-12 22:24:32.453266244 -0700
+@@ -1214,7 +1214,7 @@
+               Integer.parseInt(nodeHttpPortString), appSubmitTime);
+       ShutdownHookManager.get().addShutdownHook(
+         new MRAppMasterShutdownHook(appMaster), SHUTDOWN_HOOK_PRIORITY);
+-      YarnConfiguration conf = new YarnConfiguration(new JobConf());
++      JobConf conf = new JobConf();
+       conf.addResource(new Path(MRJobConfig.JOB_CONF_FILE));
+       String jobUserName = System
+           .getenv(ApplicationConstants.Environment.USER.name());
+@@ -1261,11 +1261,12 @@
+   }
+ 
+   protected static void initAndStartAppMaster(final MRAppMaster appMaster,
+-      final YarnConfiguration conf, String jobUserName) throws IOException,
++      final JobConf conf, String jobUserName) throws IOException,
+       InterruptedException {
+     UserGroupInformation.setConfiguration(conf);
+     UserGroupInformation appMasterUgi = UserGroupInformation
+         .createRemoteUser(jobUserName);
++    conf.getCredentials().addAll(credentials);
+     appMasterUgi.doAs(new PrivilegedExceptionAction<Object>() {
+       @Override
+       public Object run() throws Exception {
+__EOT__
+
 if [ -z "$BUNDLE_SNAPPY" ] ; then
   [ -f /usr/lib/libsnappy.so ] && BUNDLE_SNAPPY="-Dsnappy.prefix=x -Dbundle.snappy=true -Dsnappy.lib=/usr/lib"
   [ -f /usr/lib64/libsnappy.so ] && BUNDLE_SNAPPY="-Dsnappy.prefix=x -Dbundle.snappy=true -Dsnappy.lib=/usr/lib64"
