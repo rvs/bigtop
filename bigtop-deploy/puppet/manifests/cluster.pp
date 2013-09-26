@@ -73,8 +73,14 @@ class hadoop_cluster_node {
   $hadoop_hbase_rootdir = "$hadoop_namenode_uri$hbase_relative_rootdir"
   $hadoop_hbase_zookeeper_quorum = $hadoop_head_node
   $hbase_heap_size               = extlookup("hbase_heap_size", "1024")
+  $hbase_thrift_server           = $hadoop_head_node
 
   $giraph_zookeeper_quorum       = $hadoop_head_node
+
+  $sqoop_server                  = $hadoop_head_node
+
+  $solr_server                   = $hadoop_head_node
+
 
   $hadoop_zookeeper_ensemble = ["$hadoop_head_node:2888:3888"]
 
@@ -84,7 +90,6 @@ class hadoop_cluster_node {
   $hadoop_rm_proxy_url       = "http://${hadoop_head_node}:8088"
   $hadoop_history_server_url = "http://${hadoop_head_node}:19888"
 
-  $solrcloud_collections = ["collection1"]
   $solrcloud_port        = "1978"
   $solrcloud_port_admin  = "1979"
   $solrcloud_zk          = "${hadoop_head_node}:2181"
@@ -157,10 +162,11 @@ class hadoop_worker_node inherits hadoop_cluster_node {
   }
 
   solr::server { "solrcloud server":
-       collections => $solrcloud_collections,
        port        => $solrcloud_port,
        port_admin  => $solrcloud_port_admin,
        zk          => $solrcloud_zk,
+       root_url    => $hadoop_namenode_uri,
+       kerberos_realm => $kerberos_realm,
   }
 }
 
@@ -246,6 +252,9 @@ class hadoop_head_node inherits hadoop_worker_node {
         rm_proxy_url => $hadoop_rm_proxy_url,
         history_server_url => $hadoop_history_server_url,
         webhdfs_url => $hadoop_httpfs_url,
+        sqoop_url   => "http://$sqoop_server:12000/sqoop",
+        solr_url    => "http://$solr_server:8983/solr/",
+        hbase_thrift_url => "$hbase_thrift_server:9090", 
         rm_host     => $hadoop_rm_host,
         rm_port     => $hadoop_rm_port,
         oozie_url   => $hadoop_oozie_url,
