@@ -218,12 +218,6 @@ class hadoop_head_node inherits hadoop_worker_node {
         auth => $hadoop_security_authentication,
   }
 
-  hadoop::httpfs { "httpfs":
-        namenode_host => $hadoop_namenode_host,
-        namenode_port => $hadoop_namenode_port,
-        auth => $hadoop_security_authentication,
-  }
-
   hadoop-hbase::master { "hbase master":
         rootdir => $hadoop_hbase_rootdir,
         heap_size => $hbase_heap_size,
@@ -247,23 +241,6 @@ class hadoop_head_node inherits hadoop_worker_node {
         kerberos_realm => $kerberos_realm,
   }
 
-  hue::server { "hue server":
-        rm_url      => $hadoop_rm_url,
-        rm_proxy_url => $hadoop_rm_proxy_url,
-        history_server_url => $hadoop_history_server_url,
-        webhdfs_url => $hadoop_httpfs_url,
-        sqoop_url   => "http://$sqoop_server:12000/sqoop",
-        solr_url    => "http://$solr_server:$solrcloud_port/solr/",
-        hbase_thrift_url => "$hbase_thrift_server:9090", 
-        rm_host     => $hadoop_rm_host,
-        rm_port     => $hadoop_rm_port,
-        oozie_url   => $hadoop_oozie_url,
-        default_fs  => $hadoop_namenode_uri,
-        kerberos_realm => $kerberos_realm,
-  }
-  Hadoop::Httpfs<||> -> Hue::Server<||>
-  Hadoop-sqoop::Client<||> -> Hue::Server<||>
-
   hadoop-zookeeper::server { "zookeeper":
         myid => "0",
         ensemble => $hadoop_zookeeper_ensemble,
@@ -279,7 +256,6 @@ class hadoop_head_node inherits hadoop_worker_node {
   Exec<| title == "init hdfs" |> -> Hadoop-hbase::Master<||>
   Exec<| title == "init hdfs" |> -> Hadoop::Resourcemanager<||>
   Exec<| title == "init hdfs" |> -> Hadoop::Historyserver<||>
-  Exec<| title == "init hdfs" |> -> Hadoop::Httpfs<||>
   Exec<| title == "init hdfs" |> -> Hadoop::Rsync_hdfs<||>
   Exec<| title == "init hdfs" |> -> Hadoop-oozie::Server<||>
 
@@ -299,6 +275,29 @@ class standby_head_node inherits hadoop_cluster_node {
 }
 
 class hadoop_gateway_node inherits hadoop_cluster_node {
+  hadoop::httpfs { "httpfs":
+        namenode_host => $hadoop_namenode_host,
+        namenode_port => $hadoop_namenode_port,
+        auth => $hadoop_security_authentication,
+  }
+
+  hue::server { "hue server":
+        rm_url      => $hadoop_rm_url,
+        rm_proxy_url => $hadoop_rm_proxy_url,
+        history_server_url => $hadoop_history_server_url,
+        webhdfs_url => $hadoop_httpfs_url,
+        sqoop_url   => "http://$sqoop_server:12000/sqoop",
+        solr_url    => "http://$solr_server:$solrcloud_port/solr/",
+        hbase_thrift_url => "$fqdn:9090", 
+        rm_host     => $hadoop_rm_host,
+        rm_port     => $hadoop_rm_port,
+        oozie_url   => $hadoop_oozie_url,
+        default_fs  => $hadoop_namenode_uri,
+        kerberos_realm => $kerberos_realm,
+  }
+  Hadoop::Httpfs<||> -> Hue::Server<||>
+  Hadoop-hbase::Client<||> -> Hue::Server<||>
+
   hadoop::client { "hadoop client":
     namenode_host => $hadoop_namenode_host,
     namenode_port => $hadoop_namenode_port,
@@ -322,7 +321,9 @@ class hadoop_gateway_node inherits hadoop_cluster_node {
   }
   hadoop-oozie::client { "oozie client":
   }
-  hadoop-hbase::client { "hbase client":
+  hadoop-hbase::client { "hbase thrift client":
+    thrift => true,
+    kerberos_realm => $kerberos_realm,
   }
   hadoop-zookeeper::client { "zookeeper client":
   }
