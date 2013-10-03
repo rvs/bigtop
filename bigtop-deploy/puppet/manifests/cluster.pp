@@ -62,19 +62,19 @@ class hadoop_cluster_node {
 
   $hadoop_zookeeper_port             = extlookup("hadoop_zookeeper_port", "2181")
   $solrcloud_port                    = extlookup("solrcloud_port", "1978")
-  $solrcloud_port_admin              = extlookup("solrcloud_port_admin", "1979")
+  $solrcloud_admin_port              = extlookup("solrcloud_admin_port", "1979")
   $hadoop_oozie_port                 = extlookup("hadoop_oozie_port", "11000")
-  $hadoop_httpfs_url                 = extlookup("hadoop_httpfs_url", "14000")
+  $hadoop_httpfs_port                = extlookup("hadoop_httpfs_port", "14000")
   $hadoop_rm_http_port               = extlookup("hadoop_rm_http_port", "8088")
   $hadoop_rm_proxy_port              = extlookup("hadoop_rm_proxy_port", "8088")
-  $hadoop_history_server_port        = extlookup("hadoop_history_server_port", "19888"")
+  $hadoop_history_server_port        = extlookup("hadoop_history_server_port", "19888")
   $hbase_thrift_port                 = extlookup("hbase_thrift_port", "9090")
 
   $hadoop_ha_zookeeper_quorum        = "${hadoop_head_node}:${hadoop_zookeeper_port}"
   $solrcloud_zk                      = "${hadoop_head_node}:${hadoop_zookeeper_port}"
   $hbase_thrift_address              = "${hadoop_head_node}:${hbase_thrift_port}"
   $hadoop_oozie_url                  = "http://${hadoop_head_node}:${hadoop_oozie_port}/oozie"
-  $hadoop_httpfs_url                 = "http://${hadoop_head_node}:${hadoop_httpfs_url}/webhdfs/v1"
+  $hadoop_httpfs_url                 = "http://${hadoop_head_node}:${hadoop_httpfs_port}/webhdfs/v1"
   $sqoop_server_url                  = "http://${hadoop_head_node}:${sqoop_server_port}/sqoop"
   $solrcloud_url                     = "http://${hadoop_head_node}:${solrcloud_port}/solr/"
   $hadoop_rm_url                     = "http://${hadoop_head_node}:${hadoop_rm_http_port}"
@@ -83,9 +83,9 @@ class hadoop_cluster_node {
 
   $bigtop_real_users = [ 'jenkins', 'testuser', 'hudson' ]
 
-  $hadoop_core_proxyusers = { oozie => { groups => 'hudson,testuser,root,hadoop,jenkins,oozie,httpfs,hue,users', hosts => "${hadoop_head_node},localhost,127.0.0.1" },
-                                hue => { groups => 'hudson,testuser,root,hadoop,jenkins,oozie,httpfs,hue,users', hosts => "${hadoop_head_node},localhost,127.0.0.1" },
-                             httpfs => { groups => 'hudson,testuser,root,hadoop,jenkins,oozie,httpfs,hue,users', hosts => "${hadoop_head_node},localhost,127.0.0.1" } }
+  $hadoop_core_proxyusers = { oozie => { groups => 'hudson,testuser,root,hadoop,jenkins,oozie,httpfs,hue,users', hosts => "*" },
+                                hue => { groups => 'hudson,testuser,root,hadoop,jenkins,oozie,httpfs,hue,users', hosts => "*" },
+                             httpfs => { groups => 'hudson,testuser,root,hadoop,jenkins,oozie,httpfs,hue,users', hosts => "*" } }
 
   $hbase_relative_rootdir        = extlookup("hadoop_hbase_rootdir", "/hbase")
   $hadoop_hbase_rootdir = "$hadoop_namenode_uri$hbase_relative_rootdir"
@@ -166,7 +166,7 @@ class hadoop_worker_node inherits hadoop_cluster_node {
 
   solr::server { "solrcloud server":
        port        => $solrcloud_port,
-       port_admin  => $solrcloud_port_admin,
+       port_admin  => $solrcloud_admin_port,
        zk          => $solrcloud_zk,
        root_url    => $hadoop_namenode_uri,
        kerberos_realm => $kerberos_realm,
@@ -274,7 +274,7 @@ class standby_head_node inherits hadoop_cluster_node {
 
 class hadoop_gateway_node inherits hadoop_cluster_node {
   $hbase_thrift_address              = "${fqdn}:${hbase_thrift_port}"
-  $hadoop_httpfs_url                 = "http://${fqdn}:${hadoop_httpfs_url}/webhdfs/v1"
+  $hadoop_httpfs_url                 = "http://${fqdn}:${hadoop_httpfs_port}/webhdfs/v1"
   $sqoop_server_url                  = "http://${fqdn}:${sqoop_server_port}/sqoop"
   $solrcloud_url                     = "http://${fqdn}:${solrcloud_port}/solr/"
 
