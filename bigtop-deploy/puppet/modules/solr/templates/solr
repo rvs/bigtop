@@ -16,7 +16,7 @@ SOLR_LOG=/var/log/solr
 SOLR_PORT="<%= port %>"
 SOLR_ADMIN_PORT="<%= port_admin %>"
 SOLR_ZK_ENSEMBLE="<%= zk %>/solr"
-SOLR_HDFS_HOME=<%= root_url %>
+SOLR_HDFS_HOME=<%= root_url %>/solr
 SOLR_HDFS_CONFIG=/etc/hadoop/conf
 
 <% if @kerberos_realm == "" %>

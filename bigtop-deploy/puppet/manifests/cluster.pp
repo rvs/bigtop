@@ -253,7 +253,7 @@ class hadoop_head_node inherits hadoop_worker_node {
         history_server_url => $hadoop_history_server_url,
         webhdfs_url => $hadoop_httpfs_url,
         sqoop_url   => "http://$sqoop_server:12000/sqoop",
-        solr_url    => "http://$solr_server:8983/solr/",
+        solr_url    => "http://$solr_server:$solrcloud_port/solr/",
         hbase_thrift_url => "$hbase_thrift_server:9090", 
         rm_host     => $hadoop_rm_host,
         rm_port     => $hadoop_rm_port,
