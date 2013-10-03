@@ -26,8 +26,7 @@ class solr {
     }
 
     exec { "solr init":
-      command => "/bin/bash -c '/usr/bin/solrctl init && /etc/init.d/solr-server init'",
-      returns => [0, 1],
+      command => "/bin/bash -c '/usr/bin/solrctl debug-dump | grep -q solr.xml || /usr/bin/solrctl init'",
       require => [ Package["solr-server"], File["/etc/default/solr"] ],
       logoutput => true,
     }
