@@ -15,7 +15,7 @@
 class bigtop_toolchain::deps {
 
   include bigtop_toolchain::packages
-  include bigtop_toolchain::jdk
+  # include bigtop_toolchain::jdk
 
   case $operatingsystem{
     Ubuntu: { $scala_file = 'scala-2.10.3.deb' }

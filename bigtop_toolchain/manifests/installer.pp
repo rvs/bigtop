@@ -14,7 +14,7 @@
 # limitations under the License.
 
 class bigtop_toolchain::installer {
-  include bigtop_toolchain::jdk
+#  include bigtop_toolchain::jdk
   include bigtop_toolchain::maven
   include bigtop_toolchain::forrest
   include bigtop_toolchain::ant
