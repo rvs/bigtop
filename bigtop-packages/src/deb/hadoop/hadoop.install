@@ -11,6 +11,7 @@
 /etc/default/hadoop
 /etc/bash_completion.d/hadoop
 /usr/lib/hadoop/etc
+/usr/lib/hadoop/libexec/hadoop-functions.sh
 /usr/lib/hadoop/libexec/hadoop-config.sh
 /usr/lib/hadoop/libexec/hadoop-layout.sh
 /usr/lib/hadoop/*.jar
