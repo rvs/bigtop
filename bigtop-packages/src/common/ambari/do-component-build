@@ -17,5 +17,58 @@
 set -ex
 . `dirname $0`/bigtop.bom
 
+chmod 777 `find . -name ambari-python-wrap -type f`
+patch -p1 <<__EOT__
+diff --git a/ambari-server/src/main/resources/common-services/HAWQ/2.0.0/role_command_order.json b/ambari-server/src/main/resources/common-services/HAWQ/2.0.0/role_command_order.json
+new file mode 100644
+index 0000000..6b6f7c2
+--- /dev/null
++++ b/ambari-server/src/main/resources/common-services/HAWQ/2.0.0/role_command_order.json
+@@ -0,0 +1,11 @@
++{
++  "general_deps" : {
++    "_comment" : "dependencies for HAWQ",
++    "HAWQMASTER-START" : ["NAMENODE-START", "DATANODE-START", "NODEMANAGER-START"],
++    "HAWQSTANDBY-START" : ["HAWQMASTER-START"],
++    "HAWQSTANDBY-RESTART" : ["HAWQMASTER-RESTART"],
++    "HAWQSEGMENT-START" : ["HAWQMASTER-START", "HAWQSTANDBY-START"],
++    "HAWQSEGMENT-RESTART" : ["HAWQMASTER-RESTART", "HAWQSTANDBY-RESTART"],
++    "HAWQ_SERVICE_CHECK-SERVICE_CHECK" : ["HAWQSEGMENT-START", "HDFS_SERVICE_CHECK-SERVICE_CHECK", "YARN_SERVICE_CHECK-SERVICE_CHECK", "PXF_SERVICE_CHECK-SERVICE_CHECK"]
++  }
++}
+diff --git a/ambari-server/src/main/resources/common-services/PXF/3.0.0/role_command_order.json b/ambari-server/src/main/resources/common-services/PXF/3.0.0/role_command_order.json
+new file mode 100644
+index 0000000..a14aa49
+--- /dev/null
++++ b/ambari-server/src/main/resources/common-services/PXF/3.0.0/role_command_order.json
+@@ -0,0 +1,7 @@
++{
++  "general_deps" : {
++    "_comment" : "dependencies for PXF",
++    "PXF-START" : ["NAMENODE-START", "DATANODE-START"],
++    "PXF_SERVICE_CHECK-SERVICE_CHECK" : ["PXF-START", "HDFS_SERVICE_CHECK-SERVICE_CHECK", "HBASE_SERVICE_CHECK-SERVICE_CHECK", "HIVE_SERVICE_CHECK-SERVICE_CHECK"]
++  }
++}
+diff --git a/ambari-server/src/main/resources/stacks/HDP/2.3/role_command_order.json b/ambari-server/src/main/resources/stacks/HDP/2.3/role_command_order.json
+index edd6d64..2c841ca 100755
+--- a/ambari-server/src/main/resources/stacks/HDP/2.3/role_command_order.json
++++ b/ambari-server/src/main/resources/stacks/HDP/2.3/role_command_order.json
+@@ -12,14 +12,6 @@
+     "ATLAS_SERVER-START": ["KAFKA_BROKER-START", "INFRA_SOLR-START", "HBASE_MASTER-START", "HBASE_REGIONSERVER-START"],
+     "SPARK_THRIFTSERVER-START" : ["NAMENODE-START", "HIVE_METASTORE-START"],
+     "RESOURCEMANAGER-STOP" : ["SPARK_THRIFTSERVER-STOP"],
+-    "HAWQMASTER-START" : ["NAMENODE-START", "DATANODE-START", "NODEMANAGER-START"],
+-    "HAWQSTANDBY-START" : ["HAWQMASTER-START"],
+-    "HAWQSTANDBY-RESTART" : ["HAWQMASTER-RESTART"],
+-    "HAWQSEGMENT-START" : ["HAWQMASTER-START", "HAWQSTANDBY-START"],
+-    "HAWQSEGMENT-RESTART" : ["HAWQMASTER-RESTART", "HAWQSTANDBY-RESTART"],
+-    "HAWQ_SERVICE_CHECK-SERVICE_CHECK" : ["HAWQSEGMENT-START", "HDFS_SERVICE_CHECK-SERVICE_CHECK", "YARN_SERVICE_CHECK-SERVICE_CHECK", "PXF_SERVICE_CHECK-SERVICE_CHECK"],
+-    "PXF-START" : ["NAMENODE-START", "DATANODE-START"],
+-    "PXF_SERVICE_CHECK-SERVICE_CHECK" : ["PXF-START", "HDFS_SERVICE_CHECK-SERVICE_CHECK", "HBASE_SERVICE_CHECK-SERVICE_CHECK", "HIVE_SERVICE_CHECK-SERVICE_CHECK"],
+     "KNOX_GATEWAY-START" : ["RANGER_USERSYNC-START", "NAMENODE-START"],
+     "KAFKA_BROKER-START" : ["ZOOKEEPER_SERVER-START", "RANGER_USERSYNC-START", "NAMENODE-START"],
+     "NIMBUS-START" : ["ZOOKEEPER_SERVER-START", "RANGER_USERSYNC-START", "NAMENODE-START"],
+__EOT__
+
 export _JAVA_OPTIONS="-Xmx2048m -XX:MaxPermSize=512m -Djava.awt.headless=true"
 mvn clean package -DskipTests -Drat.skip
